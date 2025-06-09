@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -23,14 +24,38 @@ public class AgentServiceImpl implements AgentService {
                         agent.getName(),
                         agent.getType(),
                         agent.getStatus(),
-                        agent.getClientId()
+                        agent.getClientId(),
+                        agent.getDescription(),
+                        agent.getCreatedAt(),
+                        agent.getUpdatedAt()
                 ))
                 .collect(Collectors.toList());
     }
 
     @Override
     public AgentDTO updateAgent(Long id, AgentDTO dto) {
-        return null;
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Agent not found with id: " + id));
+
+        agent.setName(dto.getName());
+        agent.setType(dto.getType());
+        agent.setStatus(dto.getStatus());
+        agent.setClientId(dto.getClientId());
+        agent.setDescription(dto.getDescription());
+        // If you update timestamps or other fields, do it here
+
+        agentRepository.save(agent);
+
+        return new AgentDTO(
+                agent.getId(),
+                agent.getName(),
+                agent.getType(),
+                agent.getStatus(),
+                agent.getClientId(),
+                agent.getDescription(),
+                agent.getUpdatedAt(),
+                agent.getCreatedAt()
+        );
     }
 
     @Override
@@ -40,6 +65,9 @@ public class AgentServiceImpl implements AgentService {
         agent.setType(dto.getType());
         agent.setStatus(dto.getStatus());
         agent.setClientId(dto.getClientId());
+        agent.setDescription(dto.getDescription());
+        agent.setCreatedAt(dto.getCreatedAt());
+        agent.setUpdatedAt(dto.getUpdatedAt());
         Agent saved = agentRepository.save(agent);
         // Map back to DTO
         AgentDTO result = new AgentDTO();
@@ -48,6 +76,9 @@ public class AgentServiceImpl implements AgentService {
         result.setType(saved.getType());
         result.setStatus(saved.getStatus());
         result.setClientId(saved.getClientId());
+        result.setDescription(saved.getDescription());
+        result.setCreatedAt(saved.getCreatedAt());
+        result.setUpdatedAt(saved.getUpdatedAt());
         return result;
     }
 
@@ -59,7 +90,10 @@ public class AgentServiceImpl implements AgentService {
                 agent.getName(),
                 agent.getType(),
                 agent.getStatus(),
-                agent.getClientId()
+                agent.getClientId(),
+                agent.getDescription(),
+                agent.getUpdatedAt(),
+                agent.getCreatedAt()
         );
     }
 
