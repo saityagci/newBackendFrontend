@@ -4,12 +4,14 @@ import com.sfaai.sfaai.dto.ClientDTO;
 import com.sfaai.sfaai.service.ClientService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/clients")
+@RequestMapping("/api/users")
 @RequiredArgsConstructor
 public class ClientController {
 
@@ -21,6 +23,7 @@ public class ClientController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<ClientDTO>> all() {
         return ResponseEntity.ok(clientService.findAll());
     }
@@ -35,4 +38,5 @@ public class ClientController {
         clientService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
 }
