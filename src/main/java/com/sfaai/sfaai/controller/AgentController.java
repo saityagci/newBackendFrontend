@@ -1,6 +1,8 @@
 package com.sfaai.sfaai.controller;
 
+import com.sfaai.sfaai.dto.AgentDTO;
 import com.sfaai.sfaai.entity.Agent;
+import com.sfaai.sfaai.service.AgentService;
 import com.sfaai.sfaai.service.AgentServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -14,26 +16,51 @@ import java.util.List;
 @RequestMapping("/api/agents")
 @RequiredArgsConstructor
 public class AgentController {
-    private final AgentServiceImpl agentService;
+    private final AgentService agentService;
 
-    @GetMapping
+    // Create a new agent
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<Agent>> getAll() {
-        return ResponseEntity.ok(agentService.getAllAgents());
-    }
-
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Agent> create(@RequestBody Agent agent) {
-        return ResponseEntity.ok(agentService.saveAgent(agent));
+    public ResponseEntity<AgentDTO> create(@RequestBody AgentDTO dto) {
+        AgentDTO created = agentService.createAgent(dto);
+        return ResponseEntity.status(201).body(created); // 201 Created
     }
 
-    @DeleteMapping("/{id}")
+    // Get agent by ID
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/{id}")
+    public ResponseEntity<AgentDTO> getById(@PathVariable Long id) {
+        AgentDTO agent = agentService.getAgent(id);
+        if (agent == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(agent); // 200 OK
+    }
+
+    // Get all agents
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping
+    public ResponseEntity<List<AgentDTO>> getAll() {
+        List<AgentDTO> agents = agentService.getAllAgents();
+        return ResponseEntity.ok(agents); // 200 OK
+    }
+
+    // Update agent
     @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{id}")
+    public ResponseEntity<AgentDTO> update(@PathVariable Long id, @RequestBody AgentDTO dto) {
+        AgentDTO updated = agentService.updateAgent(id, dto);
+        if (updated == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(updated); // 200 OK
+    }
+
+    // Delete agent
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         agentService.deleteAgent(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.noContent().build(); // 204 No Content
     }
-
-
 }

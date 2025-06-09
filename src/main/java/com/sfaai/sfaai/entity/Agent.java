@@ -20,10 +20,11 @@ public class Agent {
     private String name;
     private String type; // e.g., "VAPI", "n8n", etc.
     private String status; // e.g., "ACTIVE", "INACTIVE"
+
     private Long clientId; // Foreign key to Client
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    // Getters and setters
+
 }
