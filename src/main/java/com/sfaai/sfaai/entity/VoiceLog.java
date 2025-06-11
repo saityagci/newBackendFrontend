@@ -40,6 +40,7 @@ public class VoiceLog {
 
     private String audioUrl;
     @Lob
+    @Column(columnDefinition = "text")
     private String transcript;
 
     // Optionally: store the raw webhook payload as JSON for debugging
