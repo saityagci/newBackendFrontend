@@ -1,6 +1,6 @@
 package com.sfaai.sfaai.filter;
 
-import com.sfaai.sfaai.service.JwtService;
+import com.sfaai.sfaai.service.impl.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

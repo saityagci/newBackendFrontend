@@ -10,4 +10,5 @@ public interface AgentService {
     List<AgentDTO> getAllAgents();
     AgentDTO updateAgent(Long id, AgentDTO dto);
     void deleteAgent(Long id);
+    List<AgentDTO> getAgentsByClientId(Long clientId);
 }

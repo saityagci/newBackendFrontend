@@ -4,15 +4,22 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-@NoArgsConstructor
 @Getter
 @Setter
+@NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class VoiceLogDTO {
     private Long id;
-    private String phoneNumber;
+    private Long agentId;
+    private Long clientId;
+    private String provider;
+    private String externalCallId;
+    private String externalAgentId;
+    private LocalDateTime startedAt;
+    private LocalDateTime endedAt;
+    private String audioUrl;
     private String transcript;
-    private LocalDateTime callTime;
-    private String source;
+    private String rawPayload; //  for debugging or admin use
+    private LocalDateTime createdAt;
 }

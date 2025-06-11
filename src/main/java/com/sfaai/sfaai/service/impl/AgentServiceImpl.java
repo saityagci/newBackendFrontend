@@ -1,13 +1,13 @@
-package com.sfaai.sfaai.service;
+package com.sfaai.sfaai.service.impl;
 
 import com.sfaai.sfaai.dto.AgentDTO;
 import com.sfaai.sfaai.entity.Agent;
 import com.sfaai.sfaai.repository.AgentRepository;
+import com.sfaai.sfaai.service.AgentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -101,6 +101,20 @@ public class AgentServiceImpl implements AgentService {
         agentRepository.deleteById(id);
     }
 
+    @Override
+    public List<AgentDTO> getAgentsByClientId(Long clientId) {
+        List<Agent> agents = agentRepository.findByClientId(clientId);
+        return agents.stream().map(
+                agent -> new AgentDTO(
+                        agent.getId(),
+                        agent.getName(),
+                        agent.getType(),
+                        agent.getStatus(),
+                        agent.getClientId(),
+                        agent.getDescription(),
+                        agent.getCreatedAt(),
+                        agent.getUpdatedAt()
+                )).collect(Collectors.toList());
 
-
-}
+    }
+    }

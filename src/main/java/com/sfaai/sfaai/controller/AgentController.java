@@ -1,9 +1,7 @@
 package com.sfaai.sfaai.controller;
 
 import com.sfaai.sfaai.dto.AgentDTO;
-import com.sfaai.sfaai.entity.Agent;
 import com.sfaai.sfaai.service.AgentService;
-import com.sfaai.sfaai.service.AgentServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -62,5 +60,12 @@ public class AgentController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         agentService.deleteAgent(id);
         return ResponseEntity.noContent().build(); // 204 No Content
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/by-client/{clientId}")
+    public ResponseEntity<List<AgentDTO>> getAgentsByClient(@PathVariable Long clientId) {
+        List<AgentDTO> agents = agentService.getAgentsByClientId(clientId);
+        return ResponseEntity.ok(agents);
     }
 }

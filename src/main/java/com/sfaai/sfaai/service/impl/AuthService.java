@@ -1,4 +1,4 @@
-package com.sfaai.sfaai.service;
+package com.sfaai.sfaai.service.impl;
 
 import com.sfaai.sfaai.dto.LoginRequest;
 import com.sfaai.sfaai.dto.LoginResponse;

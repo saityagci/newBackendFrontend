@@ -1,4 +1,4 @@
-package com.sfaai.sfaai.service;
+package com.sfaai.sfaai.service.impl;
 
 import com.sfaai.sfaai.repository.ClientRepository;
 import org.springframework.beans.factory.annotation.Autowired;

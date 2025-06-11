@@ -1,4 +1,4 @@
-package com.sfaai.sfaai.service;
+package com.sfaai.sfaai.service.impl;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
