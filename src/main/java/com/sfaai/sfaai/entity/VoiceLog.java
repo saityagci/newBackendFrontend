@@ -41,10 +41,12 @@ public class VoiceLog {
     private String audioUrl;
     @Lob
     @Column(columnDefinition = "text")
+    @Basic(fetch = FetchType.EAGER)
     private String transcript;
 
     // Optionally: store the raw webhook payload as JSON for debugging
     @Lob
+    @Basic(fetch = FetchType.EAGER)
     private String rawPayload;
 
     private LocalDateTime createdAt;

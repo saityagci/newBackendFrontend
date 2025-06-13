@@ -8,9 +8,11 @@ import com.sfaai.sfaai.repository.VoiceLogRepository;
 import com.sfaai.sfaai.service.VoiceLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -54,10 +56,15 @@ public class VoiceLogServiceImpl implements VoiceLogService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<VoiceLogDTO> findByAgentId(Long agentId) {
-        return voiceLogRepository.findByAgentId(agentId).stream()
+
+        List<VoiceLog> logs= voiceLogRepository.findByAgentIdWithJoins(agentId);
+        return logs.stream()
                 .map(this::toDto)
-                .toList();
+                .collect(Collectors.toList());
+
+
     }
 
     @Override
@@ -89,6 +96,7 @@ public class VoiceLogServiceImpl implements VoiceLogService {
             dto.setAgentId(entity.getAgent().getId());
         if (entity.getClient() != null)
             dto.setClientId(entity.getClient().getId());
+        System.out.println("Transcript = " + entity.getTranscript());
         return dto;
     }
 }

@@ -5,9 +5,11 @@ import com.sfaai.sfaai.service.VoiceLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/voicelogs")
@@ -41,6 +43,7 @@ public class VoiceLogController {
     }
 
     // Get voicelogs for a specific agent
+   @Transactional(readOnly = true)
     @PreAuthorize("hasRole('ADMIN') or hasRole('CLIENT')")
     @GetMapping("/agent/{agentId}")
     public ResponseEntity<List<VoiceLogDTO>> findByAgentId(@PathVariable Long agentId) {
@@ -60,5 +63,21 @@ public class VoiceLogController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         voiceLogService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // No auth for webhook (add auth later if needed)
+    @PostMapping("/webhook")
+    public ResponseEntity<?> receiveVoiceLogWebhook(@RequestBody Map<String, Object> payload) {
+        // Map payload to VoiceLogDTO (write a small helper if needed)
+        VoiceLogDTO dto = new VoiceLogDTO();
+        dto.setTranscript((String) payload.get("transcript"));
+        dto.setAudioUrl((String) payload.get("audio_url"));
+        dto.setProvider((String) payload.get("provider"));
+        // ... any other mapping needed
+
+        // Save to DB
+        voiceLogService.save(dto);
+
+        return ResponseEntity.ok("ok");
     }
 }

@@ -62,7 +62,7 @@ public class AgentController {
         return ResponseEntity.noContent().build(); // 204 No Content
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CLIENT')")
     @GetMapping("/by-client/{clientId}")
     public ResponseEntity<List<AgentDTO>> getAgentsByClient(@PathVariable Long clientId) {
         List<AgentDTO> agents = agentService.getAgentsByClientId(clientId);
