@@ -2,7 +2,6 @@ package com.sfaai.sfaai.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.time.LocalDateTime;
 
 @Entity
@@ -16,18 +15,30 @@ public class WorkflowLog {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // Link to Agent (Voice Agent)
     @ManyToOne
-    @JoinColumn(name = "client_id") // This creates the foreign key in the workflow_log table
+    @JoinColumn(name = "agent_id")
+    private Agent agent;
+
+    // Link to Client (optional, can be accessed via agent as well)
+    @ManyToOne
+    @JoinColumn(name = "client_id")
     private Client client;
+
+    // Link to VoiceLog (optional, for deep traceability)
+    @ManyToOne
+    @JoinColumn(name = "voice_log_id")
+    private VoiceLog voiceLog;
+
     private String workflowName;
 
-    @Column(columnDefinition = "TEXT")
-    private String inputJson;
+    @Lob
+    @Column(columnDefinition = "text")
+    private String inputData;
 
-    @Column(columnDefinition = "TEXT")
-    private String outputJson;
+    @Lob
+    @Column(columnDefinition = "text")
+    private String outputData;
 
     private LocalDateTime createdAt;
-
-
 }
