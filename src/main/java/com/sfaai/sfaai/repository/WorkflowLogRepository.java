@@ -10,7 +10,7 @@ import java.util.Optional;
 
 @Repository
 public interface WorkflowLogRepository extends JpaRepository<WorkflowLog, Long> {
-    List<WorkflowLog> findByWorkflowId(Long workflowId);
+
     List<WorkflowLog> findByClientId(Long clientId);
     List<WorkflowLog> findByVoiceLogId(Long voiceLogId);
     List<WorkflowLog> findByAgentId(Long agentId);
