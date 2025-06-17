@@ -1,102 +1,118 @@
 package com.sfaai.sfaai.service.impl;
 
+
+import com.sfaai.sfaai.dto.VoiceLogCreateDTO;
 import com.sfaai.sfaai.dto.VoiceLogDTO;
 import com.sfaai.sfaai.entity.VoiceLog;
-import com.sfaai.sfaai.repository.AgentRepository;
-import com.sfaai.sfaai.repository.ClientRepository;
+import com.sfaai.sfaai.exception.ResourceNotFoundException;
+import com.sfaai.sfaai.mapper.VoiceLogMapper;
 import com.sfaai.sfaai.repository.VoiceLogRepository;
 import com.sfaai.sfaai.service.VoiceLogService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
+
 public class VoiceLogServiceImpl implements VoiceLogService {
 
+    //private final VoiceLogRepository voiceLogRepository;
+    private final VoiceLogMapper voiceLogMapper;
     private final VoiceLogRepository voiceLogRepository;
-    private final AgentRepository agentRepository;
-    private final ClientRepository clientRepository;
 
-    @Override
-    public VoiceLogDTO save(VoiceLogDTO dto) {
-        VoiceLog entity = new VoiceLog();
-        entity.setTranscript(dto.getTranscript());
-        entity.setAudioUrl(dto.getAudioUrl());
-        // If not provided in DTO, set to now
-        entity.setCreatedAt(dto.getCreatedAt() != null ? dto.getCreatedAt() : LocalDateTime.now());
-        entity.setProvider(dto.getProvider());
-        // to fetch agent/client from repository
-        if (dto.getAgentId() != null) {
-            agentRepository.findById(dto.getAgentId()).ifPresent(entity::setAgent);
-        }
-        if (dto.getClientId() != null) {
-            clientRepository.findById(dto.getClientId()).ifPresent(entity::setClient);
-        }
-        VoiceLog saved = voiceLogRepository.save(entity);
-        return toDto(saved);
-    }
-
-    @Override
-    public List<VoiceLogDTO> findAll() {
-        return voiceLogRepository.findAll().stream()
-                .map(this::toDto)
-                .toList();
-    }
-
-    @Override
-    public VoiceLogDTO findById(Long id) {
-        return voiceLogRepository.findById(id)
-                .map(this::toDto)
-                .orElse(null);
+    public VoiceLogServiceImpl(VoiceLogMapper voiceLogMapper, VoiceLogRepository voiceLogRepository) {
+        this.voiceLogMapper = voiceLogMapper;
+        this.voiceLogRepository = voiceLogRepository;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<VoiceLogDTO> findByAgentId(Long agentId) {
-
-        List<VoiceLog> logs= voiceLogRepository.findByAgentIdWithJoins(agentId);
-        return logs.stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
-
-
+    public VoiceLogDTO getVoiceLogById(Long id) {
+        VoiceLog voiceLog = voiceLogRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Voice log not found with id: " + id));
+        return voiceLogMapper.toDto(voiceLog);
     }
 
     @Override
-    public List<VoiceLogDTO> findByClientId(Long clientId) {
-        return voiceLogRepository.findByClientId(clientId).stream()
-                .map(this::toDto)
-                .toList();
+    @Transactional(readOnly = true)
+    public List<VoiceLogDTO> getAllVoiceLogs() {
+        List<VoiceLog> voiceLogs = voiceLogRepository.findAll();
+        return voiceLogMapper.toDtoList(voiceLogs);
     }
 
     @Override
-    public void delete(Long id) {
-        voiceLogRepository.deleteById(id);
+    @Transactional(readOnly = true)
+    public Page<VoiceLogDTO> getVoiceLogs(Pageable pageable) {
+        Page<VoiceLog> voiceLogs = voiceLogRepository.findAll(pageable);
+        return voiceLogs.map(voiceLogMapper::toDto);
     }
 
-// --- Simple DTO-entity mapper ---
+    @Override
+    @Transactional(readOnly = true)
+    public List<VoiceLogDTO> getVoiceLogsByClientId(Long clientId) {
+        List<VoiceLog> voiceLogs = voiceLogRepository.findByClientId(clientId);
+        return voiceLogMapper.toDtoList(voiceLogs);
+    }
 
-    private VoiceLogDTO toDto(VoiceLog entity) {
-        VoiceLogDTO dto = new VoiceLogDTO();
-        dto.setId(entity.getId());
-        dto.setTranscript(entity.getTranscript());
-        dto.setAudioUrl(entity.getAudioUrl());
-        dto.setCreatedAt(entity.getCreatedAt());
-        dto.setProvider(entity.getProvider());
-        dto.setStartedAt(entity.getStartedAt());
-        dto.setEndedAt(entity.getEndedAt());
-        dto.setExternalCallId(entity.getExternalCallId());
-        dto.setRawPayload(entity.getRawPayload());
-        if (entity.getAgent() != null)
-            dto.setAgentId(entity.getAgent().getId());
-        if (entity.getClient() != null)
-            dto.setClientId(entity.getClient().getId());
-        System.out.println("Transcript = " + entity.getTranscript());
-        return dto;
+    @Override
+    @Transactional(readOnly = true)
+    public List<VoiceLogDTO> getVoiceLogsByAgentId(Long agentId) {
+        List<VoiceLog> voiceLogs = voiceLogRepository.findByAgentId(agentId);
+        return voiceLogMapper.toDtoList(voiceLogs);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<VoiceLogDTO> getVoiceLogsByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
+        List<VoiceLog> voiceLogs = voiceLogRepository.findByCreatedAtBetween(startDate, endDate);
+        return voiceLogMapper.toDtoList(voiceLogs);
+    }
+
+    @Override
+    @Transactional
+    public VoiceLogDTO createVoiceLog(VoiceLogCreateDTO dto) {
+        VoiceLog voiceLog = voiceLogMapper.createEntityFromDto(dto);
+        VoiceLog savedVoiceLog = voiceLogRepository.save(voiceLog);
+        return voiceLogMapper.toDto(savedVoiceLog);
+    }
+
+    @Override
+    public VoiceLogDTO save(VoiceLogCreateDTO dto) {
+        VoiceLog voiceLog = voiceLogMapper.createEntityFromDto(dto);
+        VoiceLog savedVoiceLog = voiceLogRepository.save(voiceLog);
+        return voiceLogMapper.toDto(savedVoiceLog);
+    }
+
+    @Override
+    @Transactional
+    public VoiceLogDTO updateVoiceLogStatus(Long id, VoiceLog.Status status) {
+        VoiceLog voiceLog = voiceLogRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Voice log not found with id: " + id));
+
+        voiceLog.setStatus(status);
+
+        // If completed, set end time if not already set
+        if (status == VoiceLog.Status.COMPLETED && voiceLog.getEndedAt() == null) {
+            voiceLog.setEndedAt(LocalDateTime.now());
+        }
+
+        VoiceLog updatedVoiceLog = voiceLogRepository.save(voiceLog);
+        return voiceLogMapper.toDto(updatedVoiceLog);
+    }
+
+    @Override
+    @Transactional
+    public void deleteVoiceLog(Long id) {
+        VoiceLog voiceLog = voiceLogRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Voice log not found with id: " + id));
+
+        voiceLogRepository.delete(voiceLog);
     }
 }
+
+

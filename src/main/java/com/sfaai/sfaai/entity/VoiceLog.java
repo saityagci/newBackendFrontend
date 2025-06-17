@@ -1,53 +1,86 @@
+
 package com.sfaai.sfaai.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
 @Entity
+@Table(name = "voice_log")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class VoiceLog {
+
+    public enum Status {
+        INITIATED, RINGING, IN_PROGRESS, COMPLETED, FAILED, CANCELLED
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Link to your Agent
-    @ManyToOne
-    @JoinColumn(name = "agent_id")
-    private Agent agent;
-
-    // Optionally link to Client
-    @ManyToOne
-    @JoinColumn(name = "client_id")
-    private Client client;
-
-    // Voice provider: vapi, elevenlabs, etc.
-    private String provider;
-
-    // Call/session ID from the external provider
+    @Column(name = "external_call_id")
     private String externalCallId;
 
-    // Optional: the provider's agent id (if needed)
+    @NotBlank
+    @Column(nullable = false)
+    private String provider;
+
+    @Column(name = "external_agent_id")
     private String externalAgentId;
 
+    @Column(name = "started_at")
     private LocalDateTime startedAt;
+
+    @Column(name = "ended_at")
     private LocalDateTime endedAt;
 
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Status status;
+
+    @Column(name = "audio_url")
     private String audioUrl;
-    @Lob
-    @Column(columnDefinition = "text")
-    @Basic(fetch = FetchType.EAGER)
+
+    @Column(columnDefinition = "TEXT")
     private String transcript;
 
-    // Optionally: store the raw webhook payload as JSON for debugging
-    @Lob
-    @Basic(fetch = FetchType.EAGER)
+    @Column(name = "raw_payload", columnDefinition = "TEXT")
     private String rawPayload;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "client_id", nullable = false)
+    private Client client;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "agent_id", nullable = false)
+    private Agent agent;
+
+    @Column(name = "metadata", columnDefinition = "TEXT")
+    private String metadata;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    // Calculated field
+    public Integer getDuration() {
+        if (startedAt != null && endedAt != null) {
+            return (int) java.time.Duration.between(startedAt, endedAt).getSeconds();
+        }
+        return null;
+    }
 }

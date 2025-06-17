@@ -11,11 +11,13 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-
 import java.io.IOException;
+import lombok.extern.slf4j.Slf4j;
+
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
@@ -33,16 +35,30 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         final String userEmail;
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            // Log for debugging
+            log.debug("No JWT token found in request");
             filterChain.doFilter(request, response);
             return;
         }
 
-        jwt = authHeader.substring(7);
-        userEmail = jwtService.extractUsername(jwt);
+        try {
+            jwt = authHeader.substring(7);
+            userEmail = jwtService.extractUsername(jwt);
+        } catch (Exception e) {
+            log.error("Error processing JWT token: {}", e.getMessage());
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = customUserDetailsService.loadUserByUsername(userEmail); // <--- This is the fix!
-            if (jwtService.isTokenValid(jwt, userDetails)) {
+            try {
+                UserDetails userDetails = customUserDetailsService.loadUserByUsername(userEmail); // <--- This is the fix!
+                if (jwtService.isTokenValid(jwt, userDetails)) {
+                // Debug log authorities
+                log.debug("User {} has authorities: {}", userDetails.getUsername(), 
+                    userDetails.getAuthorities().stream()
+                        .map(a -> a.getAuthority())
+                        .collect(java.util.stream.Collectors.joining(", ")));
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails, null, userDetails.getAuthorities());
 
@@ -50,6 +66,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         new WebAuthenticationDetailsSource().buildDetails(request));
 
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+            } catch (Exception e) {
+                log.error("Authentication error: {}", e.getMessage());
+                // Don't set security context if authentication fails
             }
         }
 

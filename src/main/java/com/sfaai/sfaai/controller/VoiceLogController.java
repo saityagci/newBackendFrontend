@@ -1,83 +1,84 @@
 package com.sfaai.sfaai.controller;
 
+import com.sfaai.sfaai.dto.VoiceLogCreateDTO;
 import com.sfaai.sfaai.dto.VoiceLogDTO;
+import com.sfaai.sfaai.dto.VoiceLogWebhookDTO;
+import com.sfaai.sfaai.exception.WebhookException;
+import com.sfaai.sfaai.mapper.VoiceLogWebhookMapper;
 import com.sfaai.sfaai.service.VoiceLogService;
+import com.sfaai.sfaai.util.WebhookSignatureVerifier;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Map;
-
 @RestController
 @RequestMapping("/api/voicelogs")
 @RequiredArgsConstructor
+@Tag(name = "Voice Logs", description = "Voice logs management API")
+@Slf4j
 public class VoiceLogController {
-
     private final VoiceLogService voiceLogService;
+    private final WebhookSignatureVerifier signatureVerifier;
 
-    // Create/save a voicelog (used by webhook or app)
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CLIENT')")
     @PostMapping
-    public ResponseEntity<VoiceLogDTO> save(@RequestBody VoiceLogDTO dto) {
-        VoiceLogDTO saved = voiceLogService.save(dto);
-        return ResponseEntity.status(201).body(saved);
-    }
-
-    // Get all voicelogs
-    @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping
-    public ResponseEntity<List<VoiceLogDTO>> findAll() {
-        return ResponseEntity.ok(voiceLogService.findAll());
-    }
-
-    // Get voicelog by ID
     @PreAuthorize("hasRole('ADMIN') or hasRole('CLIENT')")
-    @GetMapping("/{id}")
-    public ResponseEntity<VoiceLogDTO> findById(@PathVariable Long id) {
-        VoiceLogDTO dto = voiceLogService.findById(id);
-        if (dto == null) return ResponseEntity.notFound().build();
-        return ResponseEntity.ok(dto);
+    @Operation(
+        summary = "Create voice log",
+        responses = {
+            @ApiResponse(responseCode = "201", description = "Voice log created successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid input data"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+        }
+    )
+    @Transactional
+    public ResponseEntity<VoiceLogDTO> createVoiceLog(@Valid @RequestBody VoiceLogCreateDTO dto) {
+        log.info("Creating voice log for agent {} and client {}", dto.getAgentId(), dto.getClientId());
+        VoiceLogDTO saved = voiceLogService.createVoiceLog(dto);
+        log.debug("Created voice log with ID: {}", saved.getId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
-    // Get voicelogs for a specific agent
-   @Transactional(readOnly = true)
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CLIENT')")
-    @GetMapping("/agent/{agentId}")
-    public ResponseEntity<List<VoiceLogDTO>> findByAgentId(@PathVariable Long agentId) {
-        return ResponseEntity.ok(voiceLogService.findByAgentId(agentId));
-    }
-
-    // Get voicelogs for a specific client
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CLIENT')")
-    @GetMapping("/client/{clientId}")
-    public ResponseEntity<List<VoiceLogDTO>> findByClientId(@PathVariable Long clientId) {
-        return ResponseEntity.ok(voiceLogService.findByClientId(clientId));
-    }
-
-    // Optionally: Delete voicelog
-    @PreAuthorize("hasRole('ADMIN')")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        voiceLogService.delete(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    // No auth for webhook (add auth later if needed)
     @PostMapping("/webhook")
-    public ResponseEntity<?> receiveVoiceLogWebhook(@RequestBody Map<String, Object> payload) {
-        // Map payload to VoiceLogDTO (write a small helper if needed)
-        VoiceLogDTO dto = new VoiceLogDTO();
-        dto.setTranscript((String) payload.get("transcript"));
-        dto.setAudioUrl((String) payload.get("audio_url"));
-        dto.setProvider((String) payload.get("provider"));
-        // ... any other mapping needed
+    @Operation(
+        summary = "Receive voice log webhook",
+        responses = {
+            @ApiResponse(responseCode = "201", description = "Webhook processed successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid webhook payload"),
+            @ApiResponse(responseCode = "403", description = "Invalid webhook signature")
+        }
+    )
+    @Transactional
+    public ResponseEntity<VoiceLogDTO> receiveVoiceLogWebhook(
+            @Valid @RequestBody VoiceLogWebhookDTO payload,
+            @RequestHeader(value = "X-Webhook-Signature", required = true) String signature
+    ) {
+        log.info("Received webhook for provider: {}", payload.getProvider());
+        validateWebhookSignature(signature, payload);
 
-        // Save to DB
-        voiceLogService.save(dto);
+        try {
+            VoiceLogCreateDTO dto = VoiceLogWebhookMapper.toCreateDTO(payload);
+            VoiceLogDTO saved = voiceLogService.createVoiceLog(dto);
+            log.info("Successfully processed webhook, created voice log ID: {}", saved.getId());
+            return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+        } catch (Exception e) {
+            log.error("Error processing webhook payload", e);
+            throw e;
+        }
+    }
 
-        return ResponseEntity.ok("ok");
+    private void validateWebhookSignature(String signature, VoiceLogWebhookDTO payload) {
+        if (!signatureVerifier.verifySignature(signature, payload)) {
+            log.warn("Invalid webhook signature received");
+            throw new WebhookException("Invalid webhook signature");
+        }
+        log.debug("Webhook signature validated successfully");
     }
 }

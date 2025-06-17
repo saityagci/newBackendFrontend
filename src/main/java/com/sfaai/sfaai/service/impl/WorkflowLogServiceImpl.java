@@ -1,104 +1,117 @@
 package com.sfaai.sfaai.service.impl;
 
+import com.sfaai.sfaai.dto.WorkflowLogCreateDTO;
 import com.sfaai.sfaai.dto.WorkflowLogDTO;
-import com.sfaai.sfaai.entity.Agent;
-import com.sfaai.sfaai.entity.Client;
-import com.sfaai.sfaai.entity.VoiceLog;
+
 import com.sfaai.sfaai.entity.WorkflowLog;
-import com.sfaai.sfaai.repository.AgentRepository;
-import com.sfaai.sfaai.repository.ClientRepository;
-import com.sfaai.sfaai.repository.VoiceLogRepository;
+import com.sfaai.sfaai.exception.ResourceNotFoundException;
+import com.sfaai.sfaai.mapper.WorkflowLogMapper;
 import com.sfaai.sfaai.repository.WorkflowLogRepository;
 import com.sfaai.sfaai.service.WorkflowLogService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import java.time.LocalDateTime;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
+
 
 @Service
 @RequiredArgsConstructor
 public class WorkflowLogServiceImpl implements WorkflowLogService {
+
     private final WorkflowLogRepository workflowLogRepository;
-    private final AgentRepository agentRepository;
-    private final ClientRepository clientRepository;
-    private final VoiceLogRepository voiceLogRepository;
+    private final WorkflowLogMapper workflowLogMapper;
 
     @Override
-    public WorkflowLogDTO save(WorkflowLogDTO dto) {
-        WorkflowLog entity = new WorkflowLog();
-        entity.setWorkflowName(dto.getWorkflowName());
-        entity.setInputData(dto.getInputData());
-        entity.setOutputData(dto.getOutputData());
-        entity.setCreatedAt(dto.getCreatedAt() != null ? dto.getCreatedAt() : LocalDateTime.now());
+    @Transactional(readOnly = true)
 
-        // Link agent
-        if (dto.getAgentId() != null) {
-            agentRepository.findById(dto.getAgentId()).ifPresent(entity::setAgent);
+    public WorkflowLogDTO getWorkflowLogById(Long id) {
+        WorkflowLog workflowLog = workflowLogRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Workflow log not found with id: " + id));
+        return workflowLogMapper.toDto(workflowLog);
+
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WorkflowLogDTO> getAllWorkflowLogs() {
+        return workflowLogMapper.toDtoList(workflowLogRepository.findAll());
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<WorkflowLogDTO> getWorkflowLogs(Pageable pageable) {
+        return workflowLogRepository.findAll(pageable)
+                .map(workflowLogMapper::toDto);
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WorkflowLogDTO> getWorkflowLogsByClientId(Long clientId) {
+        return workflowLogMapper.toDtoList(workflowLogRepository.findByClientId(clientId));
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WorkflowLogDTO> getWorkflowLogsByAgentId(Long agentId) {
+        return workflowLogMapper.toDtoList(workflowLogRepository.findByAgentId(agentId));
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WorkflowLogDTO> getWorkflowLogsByVoiceLogId(Long voiceLogId) {
+        return workflowLogMapper.toDtoList(workflowLogRepository.findByVoiceLogId(voiceLogId));
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WorkflowLogDTO> getWorkflowLogsByName(String workflowName) {
+        return workflowLogMapper.toDtoList(workflowLogRepository.findByWorkflowName(workflowName));
+    }
+
+
+    @Override
+    @Transactional
+    public WorkflowLogDTO createWorkflowLog(WorkflowLogCreateDTO dto) {
+        WorkflowLog workflowLog = workflowLogMapper.createEntityFromDto(dto);
+        workflowLog.setStatus(WorkflowLog.Status.INITIATED);
+        return workflowLogMapper.toDto(workflowLogRepository.save(workflowLog));
+    }
+
+
+    @Override
+    @Transactional
+    public WorkflowLogDTO updateWorkflowLogStatus(Long id, WorkflowLog.Status status, String result, String errorMessage) {
+        WorkflowLog workflowLog = workflowLogRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Workflow log not found with id: " + id));
+
+        workflowLog.setStatus(status);
+        if (result != null) {
+            workflowLog.setResult(result);
         }
-        // Link client
-        if (dto.getClientId() != null) {
-            clientRepository.findById(dto.getClientId()).ifPresent(entity::setClient);
-        }
-        // Link voice log (optional)
-        if (dto.getVoiceLogId() != null) {
-            voiceLogRepository.findById(dto.getVoiceLogId()).ifPresent(entity::setVoiceLog);
+        if (errorMessage != null) {
+            workflowLog.setErrorMessage(errorMessage);
         }
 
-        WorkflowLog saved = workflowLogRepository.save(entity);
-        return toDto(saved);
+        return workflowLogMapper.toDto(workflowLogRepository.save(workflowLog));
     }
 
-    @Override
-    public List<WorkflowLogDTO> findAll() {
-        return workflowLogRepository.findAll().stream()
-                .map(this::toDto)
-                .toList();
-    }
 
     @Override
-    public WorkflowLogDTO findById(Long id) {
-        return workflowLogRepository.findById(id)
-                .map(this::toDto)
-                .orElse(null);
-    }
-
-    @Override
-    public List<WorkflowLogDTO> findByAgentId(Long agentId) {
-        return workflowLogRepository.findByAgentId(agentId).stream()
-                .map(this::toDto)
-                .toList();
-    }
-
-    @Override
-    public List<WorkflowLogDTO> findByClientId(Long clientId) {
-        return workflowLogRepository.findByClientId(clientId).stream()
-                .map(this::toDto)
-                .toList();
-    }
-
-    @Override
-    public List<WorkflowLogDTO> findByVoiceLogId(Long voiceLogId) {
-        return workflowLogRepository.findByVoiceLogId(voiceLogId).stream()
-                .map(this::toDto)
-                .toList();
-    }
-
-    @Override
-    public void delete(Long id) {
+    @Transactional
+    public void deleteWorkflowLog(Long id) {
+        if (!workflowLogRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Workflow log not found with id: " + id);
+        }
         workflowLogRepository.deleteById(id);
     }
 
-    // --- Mapping ---
-    private WorkflowLogDTO toDto(WorkflowLog entity) {
-        WorkflowLogDTO dto = new WorkflowLogDTO();
-        dto.setId(entity.getId());
-        dto.setWorkflowName(entity.getWorkflowName());
-        dto.setInputData(entity.getInputData());
-        dto.setOutputData(entity.getOutputData());
-        dto.setCreatedAt(entity.getCreatedAt());
-        if (entity.getAgent() != null) dto.setAgentId(entity.getAgent().getId());
-        if (entity.getClient() != null) dto.setClientId(entity.getClient().getId());
-        if (entity.getVoiceLog() != null) dto.setVoiceLogId(entity.getVoiceLog().getId());
-        return dto;
-    }
 }
+
