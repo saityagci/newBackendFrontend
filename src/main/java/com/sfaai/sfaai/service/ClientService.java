@@ -87,4 +87,26 @@ public interface ClientService {
      * @return List of clients with the specified role
      */
     List<ClientDTO> findByRole(String role);
+
+    /**
+     * Assign a Vapi assistant to a client
+     * @param clientId Client ID
+     * @param vapiAssistantId Vapi assistant ID
+     * @return Updated client DTO
+     */
+    ClientDTO assignVapiAssistant(Long clientId, String vapiAssistantId);
+
+    /**
+     * Unassign (remove) the Vapi assistant from a client
+     * @param clientId Client ID
+     * @return Updated client DTO with vapiAssistantId set to null
+     */
+    ClientDTO unassignVapiAssistant(Long clientId);
+
+    /**
+     * Find all clients assigned to a specific Vapi assistant
+     * @param assistantId The Vapi assistant ID
+     * @return List of client DTOs assigned to the assistant
+     */
+    List<ClientDTO> findClientsByAssistantId(String assistantId);
 }

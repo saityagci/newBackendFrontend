@@ -1,30 +1,29 @@
 package com.sfaai.sfaai.service.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sfaai.sfaai.dto.VapiAgentRequestDTO;
-import com.sfaai.sfaai.dto.VapiAgentResponseDTO;
-import com.sfaai.sfaai.dto.VapiExternalRequestDTO;
-import com.sfaai.sfaai.dto.VapiExternalResponseDTO;
-import com.sfaai.sfaai.entity.Client;
-import com.sfaai.sfaai.entity.VapiAgent;
-import com.sfaai.sfaai.exception.ResourceNotFoundException;
-import com.sfaai.sfaai.repository.ClientRepository;
-import com.sfaai.sfaai.repository.VapiAgentRepository;
+import com.sfaai.sfaai.config.VapiConfig;
+import com.sfaai.sfaai.dto.VapiAssistantDTO;
+import com.sfaai.sfaai.dto.VapiCreateAssistantRequest;
+import com.sfaai.sfaai.dto.VapiCreateAssistantResponse;
+import com.sfaai.sfaai.dto.VapiListAssistantsResponse;
+import com.sfaai.sfaai.exception.ExternalApiException;
 import com.sfaai.sfaai.service.VapiAgentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Implementation of Vapi agent service
@@ -34,211 +33,134 @@ import java.util.stream.Collectors;
 @Slf4j
 public class VapiAgentServiceImpl implements VapiAgentService {
 
-    private final VapiAgentRepository vapiAgentRepository;
-    private final ClientRepository clientRepository;
     private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper;
+    private final VapiConfig vapiConfig;
 
-    @Value("${vapi.api.url}")
-    private String vapiApiUrl;
-
-    @Value("${vapi.api.key}")
-    private String vapiApiKey;
-
+    /**
+     * Gets all assistants from Vapi API
+     * @return List of assistants response
+     */
     @Override
-    @Transactional
-    public VapiAgentResponseDTO createVapiAgent(VapiAgentRequestDTO requestDTO) {
-        log.info("Creating new Vapi agent: {}", requestDTO.getName());
+    public VapiListAssistantsResponse getAllAssistants() {
+        log.info("Fetching all Vapi assistants");
 
-        // Find client
-        Client client = clientRepository.findById(requestDTO.getClientId())
-                .orElseThrow(() -> new ResourceNotFoundException("Client not found with ID: " + requestDTO.getClientId()));
-
-        // Prepare request for Vapi API
-        VapiExternalRequestDTO externalRequest = VapiExternalRequestDTO.builder()
-                .name(requestDTO.getName())
-                .greeting(requestDTO.getGreeting())
-                .language(requestDTO.getLanguage())
-                .public_agent(false) // Default value, can be made configurable
-                .build();
+        // Get API key and log a masked version
+        String apiKey = vapiConfig.getApiKey();
+        log.debug("Using Vapi API key: {}...", apiKey.substring(0, 5) + "*****");
+        log.debug("Using Vapi API URL: {}", vapiConfig.getApiUrl());
 
         // Set up headers with API key
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Authorization", "Bearer " + vapiApiKey);
+        headers.set("Authorization", "Bearer " + apiKey);
 
-        HttpEntity<VapiExternalRequestDTO> entity = new HttpEntity<>(externalRequest, headers);
+        HttpEntity<String> entity = new HttpEntity<>(headers);
 
         try {
             // Call Vapi API
-            log.debug("Calling Vapi API with request: {}", externalRequest);
-            VapiExternalResponseDTO vapiResponse = restTemplate.postForObject(
-                    vapiApiUrl + "/agents", 
-                    entity, 
-                    VapiExternalResponseDTO.class);
+            String url = vapiConfig.getApiUrl() + "/assistant";
+            log.debug("Making GET request to: {}", url);
 
-            if (vapiResponse == null || vapiResponse.getId() == null) {
-                throw new RuntimeException("Failed to create Vapi agent: null or invalid response");
+            try {
+                // Make the request
+                ResponseEntity<VapiAssistantDTO[]> response = restTemplate.exchange(
+                        url,
+                        HttpMethod.GET,
+                        entity,
+                        VapiAssistantDTO[].class);
+
+                List<VapiAssistantDTO> assistants = response.getBody() != null ?
+                        Arrays.asList(response.getBody()) : Collections.emptyList();
+
+                log.info("Successfully fetched {} Vapi assistants", assistants.size());
+
+                // Create response DTO
+                VapiListAssistantsResponse result = new VapiListAssistantsResponse();
+                result.setAssistants(assistants);
+                result.setTotal(assistants.size());
+                result.setPage(1);
+                result.setLimit(assistants.size());
+
+                return result;
+
+            } catch (HttpClientErrorException.BadRequest ex) {
+                String errorBody = ex.getResponseBodyAsString();
+                log.error("Vapi API validation error: {}", errorBody);
+                throw new ExternalApiException("Vapi API rejected the request: " + errorBody, "Vapi", "VALIDATION_ERROR", ex);
+            } catch (HttpClientErrorException.Unauthorized ex) {
+                throw new ExternalApiException("Invalid Vapi API key or authentication failure", "Vapi", "AUTH_ERROR", ex);
+            } catch (HttpServerErrorException ex) {
+                throw new ExternalApiException("Vapi API server error: " + ex.getMessage(), "Vapi", "SERVER_ERROR", ex);
+            } catch (ResourceAccessException ex) {
+                throw new ExternalApiException("Could not connect to Vapi API: " + ex.getMessage(), "Vapi", "CONNECTION_ERROR", ex);
             }
 
-            log.info("Vapi agent created successfully with ID: {}", vapiResponse.getId());
-
-            // Convert Vapi response to JSON for storage
-            String vapiDetailsJson = objectMapper.writeValueAsString(vapiResponse);
-
-            // Create and save local entity
-            VapiAgent vapiAgent = VapiAgent.builder()
-                    .vapiAgentId(vapiResponse.getId())
-                    .name(vapiResponse.getName())
-                    .greeting(vapiResponse.getGreeting())
-                    .language(vapiResponse.getLanguage())
-                    .status(vapiResponse.getStatus())
-                    .voiceId(vapiResponse.getVoice_id())
-                    .publicAgent(vapiResponse.getPublic_agent())
-                    .vapiDetails(vapiDetailsJson)
-                    .client(client)
-                    .build();
-
-            VapiAgent savedAgent = vapiAgentRepository.save(vapiAgent);
-
-            // Convert to response DTO
-            return mapToResponseDTO(savedAgent, vapiResponse);
-
         } catch (Exception e) {
-            log.error("Error creating Vapi agent: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to create Vapi agent: " + e.getMessage(), e);
+            if (!(e instanceof ExternalApiException)) {
+                log.error("Error fetching Vapi assistants: {}", e.getMessage(), e);
+                throw new ExternalApiException("Failed to fetch Vapi assistants: " + e.getMessage(), "Vapi", "UNKNOWN_ERROR", e);
+            }
+            throw e;
         }
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public VapiAgentResponseDTO getVapiAgent(Long id) {
-        log.info("Getting Vapi agent with ID: {}", id);
+    public VapiCreateAssistantResponse createAssistant(VapiCreateAssistantRequest request) {
+        log.info("Creating new Vapi assistant");
 
-        VapiAgent vapiAgent = vapiAgentRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Vapi agent not found with ID: " + id));
+        // Get API key and log a masked version
+        String apiKey = vapiConfig.getApiKey();
+        log.debug("Using Vapi API key: {}...", apiKey.substring(0, 5) + "*****");
+        log.debug("Using Vapi API URL: {}", vapiConfig.getApiUrl());
 
-        try {
-            // Parse stored Vapi details
-            VapiExternalResponseDTO vapiDetails = objectMapper.readValue(
-                    vapiAgent.getVapiDetails(), 
-                    VapiExternalResponseDTO.class);
-
-            return mapToResponseDTO(vapiAgent, vapiDetails);
-        } catch (Exception e) {
-            log.error("Error parsing Vapi details: {}", e.getMessage(), e);
-            // Return basic response without Vapi details if parsing fails
-            return mapToResponseDTO(vapiAgent, null);
-        }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public VapiAgentResponseDTO getVapiAgentByExternalId(String vapiAgentId) {
-        log.info("Getting Vapi agent with external ID: {}", vapiAgentId);
-
-        VapiAgent vapiAgent = vapiAgentRepository.findByVapiAgentId(vapiAgentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Vapi agent not found with external ID: " + vapiAgentId));
-
-        try {
-            // Parse stored Vapi details
-            VapiExternalResponseDTO vapiDetails = objectMapper.readValue(
-                    vapiAgent.getVapiDetails(), 
-                    VapiExternalResponseDTO.class);
-
-            return mapToResponseDTO(vapiAgent, vapiDetails);
-        } catch (Exception e) {
-            log.error("Error parsing Vapi details: {}", e.getMessage(), e);
-            // Return basic response without Vapi details if parsing fails
-            return mapToResponseDTO(vapiAgent, null);
-        }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Page<VapiAgentResponseDTO> getAllVapiAgents(Pageable pageable) {
-        log.info("Getting all Vapi agents with pagination");
-
-        return vapiAgentRepository.findAll(pageable)
-                .map(agent -> {
-                    try {
-                        VapiExternalResponseDTO vapiDetails = objectMapper.readValue(
-                                agent.getVapiDetails(), 
-                                VapiExternalResponseDTO.class);
-                        return mapToResponseDTO(agent, vapiDetails);
-                    } catch (Exception e) {
-                        log.error("Error parsing Vapi details: {}", e.getMessage(), e);
-                        return mapToResponseDTO(agent, null);
-                    }
-                });
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<VapiAgentResponseDTO> getVapiAgentsByClientId(Long clientId) {
-        log.info("Getting Vapi agents for client ID: {}", clientId);
-
-        // Verify client exists
-        if (!clientRepository.existsById(clientId)) {
-            throw new ResourceNotFoundException("Client not found with ID: " + clientId);
-        }
-
-        return vapiAgentRepository.findByClientId(clientId).stream()
-                .map(agent -> {
-                    try {
-                        VapiExternalResponseDTO vapiDetails = objectMapper.readValue(
-                                agent.getVapiDetails(), 
-                                VapiExternalResponseDTO.class);
-                        return mapToResponseDTO(agent, vapiDetails);
-                    } catch (Exception e) {
-                        log.error("Error parsing Vapi details: {}", e.getMessage(), e);
-                        return mapToResponseDTO(agent, null);
-                    }
-                })
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    @Transactional
-    public void deleteVapiAgent(Long id) {
-        log.info("Deleting Vapi agent with ID: {}", id);
-
-        VapiAgent vapiAgent = vapiAgentRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Vapi agent not found with ID: " + id));
-
-        // Delete from Vapi API
+        // Set up headers with API key
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + vapiApiKey);
-        HttpEntity<?> entity = new HttpEntity<>(headers);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("Authorization", "Bearer " + apiKey);
+
+        HttpEntity<VapiCreateAssistantRequest> entity = new HttpEntity<>(request, headers);
 
         try {
-            restTemplate.delete(vapiApiUrl + "/agents/" + vapiAgent.getVapiAgentId(), entity);
-            log.info("Vapi agent deleted from Vapi API: {}", vapiAgent.getVapiAgentId());
+            // Call Vapi API
+            log.debug("Calling Vapi API with request: {}", request);
+            VapiCreateAssistantResponse response;
+
+            try {
+                String url = vapiConfig.getApiUrl() + "/assistant";
+                log.debug("Making POST request to: {}", url);
+                response = restTemplate.postForObject(
+                        url,
+                        entity,
+                        VapiCreateAssistantResponse.class);
+            } catch (HttpClientErrorException.BadRequest ex) {
+                // Handle 400 errors from Vapi API
+                String errorBody = ex.getResponseBodyAsString();
+                log.error("Vapi API validation error: {}", errorBody);
+                throw new ExternalApiException("Vapi API rejected the request: " + errorBody, "Vapi", "VALIDATION_ERROR", ex);
+            } catch (HttpClientErrorException.Unauthorized ex) {
+                // Handle 401 errors from Vapi API
+                throw new ExternalApiException("Invalid Vapi API key or authentication failure", "Vapi", "AUTH_ERROR", ex);
+            } catch (HttpServerErrorException ex) {
+                // Handle 5xx errors from Vapi API
+                throw new ExternalApiException("Vapi API server error: " + ex.getMessage(), "Vapi", "SERVER_ERROR", ex);
+            } catch (ResourceAccessException ex) {
+                // Handle network/connection errors
+                throw new ExternalApiException("Could not connect to Vapi API: " + ex.getMessage(), "Vapi", "CONNECTION_ERROR", ex);
+            }
+
+            if (response == null || response.getAssistantId() == null) {
+                throw new ExternalApiException("Failed to create Vapi assistant: null or invalid response", "Vapi", "INVALID_RESPONSE");
+            }
+
+            log.info("Vapi assistant created successfully with ID: {}", response.getAssistantId());
+            return response;
+
         } catch (Exception e) {
-            log.error("Error deleting Vapi agent from Vapi API: {}", e.getMessage(), e);
-            // Continue with local deletion even if Vapi API call fails
+            if (!(e instanceof ExternalApiException)) {
+                log.error("Error creating Vapi assistant: {}", e.getMessage(), e);
+                throw new ExternalApiException("Failed to create Vapi assistant: " + e.getMessage(), "Vapi", "UNKNOWN_ERROR", e);
+            }
+            throw e;
         }
-
-        // Delete from local database
-        vapiAgentRepository.delete(vapiAgent);
-        log.info("Vapi agent deleted from local database: {}", id);
-    }
-
-    /**
-     * Map entity and Vapi response to response DTO
-     */
-    private VapiAgentResponseDTO mapToResponseDTO(VapiAgent entity, VapiExternalResponseDTO vapiDetails) {
-        return VapiAgentResponseDTO.builder()
-                .id(entity.getId())
-                .vapiAgentId(entity.getVapiAgentId())
-                .name(entity.getName())
-                .greeting(entity.getGreeting())
-                .language(entity.getLanguage())
-                .clientId(entity.getClient().getId())
-                .status(entity.getStatus())
-                .createdAt(entity.getCreatedAt())
-                .updatedAt(entity.getUpdatedAt())
-                .vapiDetails(vapiDetails) // Full Vapi response
-                .build();
     }
 }

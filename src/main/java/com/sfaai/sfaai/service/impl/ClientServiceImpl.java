@@ -199,6 +199,55 @@ public class ClientServiceImpl implements ClientService {
     }
 
     /**
+     * Assign a Vapi assistant to a client
+     * @param clientId Client ID
+     * @param vapiAssistantId Vapi assistant ID
+     * @return Updated client DTO
+     */
+    @Override
+    @Transactional
+    public ClientDTO assignVapiAssistant(Long clientId, String vapiAssistantId) {
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + clientId));
+
+        client.setVapiAssistantId(vapiAssistantId);
+        Client updatedClient = clientRepository.save(client);
+
+        return clientMapper.toDto(updatedClient);
+    }
+
+    /**
+     * Unassign (remove) the Vapi assistant from a client
+     * @param clientId Client ID
+     * @return Updated client DTO with vapiAssistantId set to null
+     */
+    @Override
+    @Transactional
+    public ClientDTO unassignVapiAssistant(Long clientId) {
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + clientId));
+
+        client.setVapiAssistantId(null);
+        Client updatedClient = clientRepository.save(client);
+
+        return clientMapper.toDto(updatedClient);
+    }
+
+    /**
+     * Find all clients assigned to a specific Vapi assistant
+     * @param assistantId The Vapi assistant ID
+     * @return List of client DTOs assigned to the assistant
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<ClientDTO> findClientsByAssistantId(String assistantId) {
+        List<Client> clients = clientRepository.findByVapiAssistantId(assistantId);
+        return clients.stream()
+                .map(clientMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Generate a unique API key for new clients
      * @return A random 32-character API key
      */

@@ -1,6 +1,6 @@
 -- Additional agents
 INSERT INTO agent (name, type, status, description, client_id)
-VALUES ('Technical Support', 'VAPI', 'ACTIVE', 'Provides technical troubleshooting assistance', 3);
+VALUES ('Technical Support', 'CUSTOM', 'ACTIVE', 'Provides technical troubleshooting assistance', 3);
 
 INSERT INTO agent (name, type, status, description, client_id)
 VALUES ('Billing Assistant', 'N8N', 'ACTIVE', 'Handles billing inquiries and payment processing', 3);

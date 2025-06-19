@@ -1,55 +1,24 @@
 package com.sfaai.sfaai.service;
 
-import com.sfaai.sfaai.dto.VapiAgentRequestDTO;
-import com.sfaai.sfaai.dto.VapiAgentResponseDTO;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-
-import java.util.List;
+import com.sfaai.sfaai.dto.VapiCreateAssistantRequest;
+import com.sfaai.sfaai.dto.VapiCreateAssistantResponse;
+import com.sfaai.sfaai.dto.VapiListAssistantsResponse;
 
 /**
- * Service for Vapi voice agent operations
+ * Service for Vapi agent operations
  */
 public interface VapiAgentService {
 
     /**
-     * Create a new Vapi voice agent
-     * @param requestDTO Agent creation data
-     * @return Created agent response
+     * Create a new Vapi assistant
+     * @param request Assistant creation data
+     * @return Created assistant response
      */
-    VapiAgentResponseDTO createVapiAgent(VapiAgentRequestDTO requestDTO);
+    VapiCreateAssistantResponse createAssistant(VapiCreateAssistantRequest request);
 
     /**
-     * Get Vapi agent by ID
-     * @param id Agent ID
-     * @return Agent response DTO
+     * Get all Vapi assistants
+     * @return List of assistants response
      */
-    VapiAgentResponseDTO getVapiAgent(Long id);
-
-    /**
-     * Get Vapi agent by external Vapi ID
-     * @param vapiAgentId External Vapi agent ID
-     * @return Agent response DTO
-     */
-    VapiAgentResponseDTO getVapiAgentByExternalId(String vapiAgentId);
-
-    /**
-     * Get all Vapi agents with pagination
-     * @param pageable Pagination information
-     * @return Page of agent response DTOs
-     */
-    Page<VapiAgentResponseDTO> getAllVapiAgents(Pageable pageable);
-
-    /**
-     * Get all Vapi agents for a specific client
-     * @param clientId Client ID
-     * @return List of agent response DTOs
-     */
-    List<VapiAgentResponseDTO> getVapiAgentsByClientId(Long clientId);
-
-    /**
-     * Delete a Vapi agent
-     * @param id Agent ID
-     */
-    void deleteVapiAgent(Long id);
+    VapiListAssistantsResponse getAllAssistants();
 }

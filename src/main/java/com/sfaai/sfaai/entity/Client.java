@@ -50,6 +50,9 @@ public class Client {
     @Column(name = "api_key", nullable = false, unique = true, length = 36)
     private String apiKey;
 
+    @Column(name = "vapi_assistant_id", length = 64)
+    private String vapiAssistantId;
+
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Agent> agents = new ArrayList<>();

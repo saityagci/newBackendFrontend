@@ -54,6 +54,25 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handle external API exceptions
+     */
+    @ExceptionHandler(ExternalApiException.class)
+    public ResponseEntity<Object> handleExternalApiException(ExternalApiException ex) {
+        log.error("External API error: {} - Provider: {} - Code: {}", 
+                ex.getMessage(), ex.getProvider(), ex.getErrorCode());
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.BAD_GATEWAY.value());
+        body.put("error", "External API Error");
+        body.put("message", ex.getMessage());
+        body.put("provider", ex.getProvider());
+        body.put("errorCode", ex.getErrorCode());
+
+        return new ResponseEntity<>(body, HttpStatus.BAD_GATEWAY);
+    }
+
+    /**
      * Handle authentication exceptions
      */
     @ExceptionHandler(org.springframework.security.authentication.BadCredentialsException.class)
