@@ -10,7 +10,6 @@ import com.sfaai.sfaai.exception.ExternalApiException;
 import com.sfaai.sfaai.service.VapiAgentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -25,7 +24,7 @@ import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -116,6 +115,7 @@ public class VapiAgentServiceImpl implements VapiAgentService {
                         log.debug("API FIELD DETECTION: 'default_message' exists: {}", responseBody.contains("default_message"));
                         log.debug("API FIELD DETECTION: 'greeting' exists: {}", responseBody.contains("greeting"));
                         log.debug("API FIELD DETECTION: 'welcome_message' exists: {}", responseBody.contains("welcome_message"));
+                        log.debug("API FIELD DETECTION: 'voice id' exists: {}", responseBody.contains("voiceId"));
 
                         // Log sample of the response to see its structure
                         log.debug("FIRST 500 CHARS OF RESPONSE: {}", 
@@ -234,12 +234,37 @@ public class VapiAgentServiceImpl implements VapiAgentService {
                                     voiceInfo.setProvider(voiceNode.get("provider").asText());
                                 }
 
-                                if (voiceNode.has("voice_id")) {
-                                    voiceInfo.setVoiceId(voiceNode.get("voice_id").asText());
+                                if (voiceNode.has("voiceId")) {
+                                    voiceInfo.setVoiceId(voiceNode.get("voiceId").asText());
                                 }
 
                                 dto.setVoice(voiceInfo);
                                 log.debug("Manually mapped voice: provider={}, voice_id={}", 
+                                        voiceInfo.getProvider(), voiceInfo.getVoiceId());
+                            } else {
+                                log.debug("No voice information found in the response for assistant ID: {}", dto.getAssistantId());
+                            }
+                            // Map transcriber info
+                            if (node.has("transcriber") && !node.get("transcriber").isNull()) {
+                                JsonNode transcriberNode = node.get("voice");
+                                VapiAssistantDTO.TranscriberInfo transcriberInfo = new VapiAssistantDTO.TranscriberInfo();
+                                VapiAssistantDTO.VoiceInfo voiceInfo = new VapiAssistantDTO.VoiceInfo();
+
+                                if (transcriberNode.has("model")) {
+                                    transcriberInfo.setModel(transcriberNode.get("model").asText());
+                                }
+                                if (transcriberNode.has("model")) {
+                                    transcriberInfo.setLanguage(transcriberNode.get("language").asText());
+                                }
+
+                                if (transcriberNode.has("provider")) {
+                                    transcriberInfo.setProvider(transcriberNode.get("provider").asText());
+
+                                }
+
+                                dto.setVoice(voiceInfo);
+                                dto.setTranscriber(transcriberInfo);
+                                log.debug("Manually mapped voice: provider={}, voice_id={}",
                                         voiceInfo.getProvider(), voiceInfo.getVoiceId());
                             } else {
                                 log.debug("No voice information found in the response for assistant ID: {}", dto.getAssistantId());
@@ -282,6 +307,7 @@ public class VapiAgentServiceImpl implements VapiAgentService {
                                                     assistant.getAssistantId(), 
                                                     assistant.getFirstMessage(), 
                                                     assistant.getVoice());
+                                                    assistant.getTranscriber();
                                             }
                                         } else {
                                             log.info("Using automatically mapped assistants");

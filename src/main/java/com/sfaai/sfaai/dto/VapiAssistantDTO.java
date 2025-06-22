@@ -84,7 +84,8 @@ public class VapiAssistantDTO {
     private ModelInfo model;
     private TranscriberInfo transcriber;
 
-    @Data
+    @Getter
+    @Setter
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
@@ -101,7 +102,8 @@ public class VapiAssistantDTO {
         }
     }
 
-    @Data
+  @Setter
+  @Getter
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
@@ -111,7 +113,8 @@ public class VapiAssistantDTO {
         private String model;
     }
 
-    @Data
+    @Setter
+    @Getter
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
