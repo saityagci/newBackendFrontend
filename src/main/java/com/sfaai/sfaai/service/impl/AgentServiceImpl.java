@@ -14,6 +14,7 @@ import com.sfaai.sfaai.repository.ClientRepository;
 import com.sfaai.sfaai.repository.specs.AgentSpecs;
 import com.sfaai.sfaai.service.AgentService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +31,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AgentServiceImpl implements AgentService {
 
     private final AgentRepository agentRepository;
@@ -101,7 +104,23 @@ public class AgentServiceImpl implements AgentService {
     @Override
     @Transactional(readOnly = true)
     public List<AgentDTO> getAgentsByClientId(Long clientId) {
+        log.debug("Fetching agents for client ID: {}", clientId);
+
+        // Verify client exists first to provide better error messaging
+        if (!clientRepository.existsById(clientId)) {
+            log.error("Client not found with ID: {}", clientId);
+            throw new ResourceNotFoundException("Client not found with id: " + clientId);
+        }
+
         List<Agent> agents = agentRepository.findByClientId(clientId);
+        // Return empty list if no agents found (not null)
+        if (agents == null) {
+            log.debug("No agents found for client ID: {}, returning empty list", clientId);
+            return new ArrayList<>();
+        }
+
+        log.debug("Found {} agents for client ID: {}", agents.size(), clientId);
+
         return agents.stream()
                 .map(agentMapper::toDto)
                 .collect(Collectors.toList());

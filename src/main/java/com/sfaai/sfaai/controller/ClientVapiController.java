@@ -2,6 +2,8 @@ package com.sfaai.sfaai.controller;
 
 import com.sfaai.sfaai.dto.AssignAssistantRequest;
 import com.sfaai.sfaai.dto.ClientDTO;
+import com.sfaai.sfaai.dto.VapiAssistantDTO;
+import com.sfaai.sfaai.exception.ResourceNotFoundException;
 import com.sfaai.sfaai.service.ClientService;
 import com.sfaai.sfaai.service.SecurityService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -124,5 +127,118 @@ public class ClientVapiController {
         log.info("Found {} clients assigned to assistant ID: {}", clients.size(), assistantId);
 
         return ResponseEntity.ok(clients);
+    }
+
+    /**
+     * Get all Vapi assistants assigned to a client
+     * @param clientId Client ID
+     * @return List of Vapi assistants assigned to the client
+     */
+    @Operation(
+        summary = "Get assistants assigned to client", 
+        description = "Retrieves all Vapi assistants assigned to a specific client from the database"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200", 
+            description = "Assistants retrieved successfully",
+            content = @Content(schema = @Schema(implementation = VapiAssistantDTO.class))
+        ),
+        @ApiResponse(responseCode = "404", description = "Client not found"),
+        @ApiResponse(responseCode = "403", description = "Not authorized to view assistants")
+    })
+    @GetMapping("/api/clients/{clientId}/assistants")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
+    public ResponseEntity<List<VapiAssistantDTO>> getClientAssistants(@PathVariable Long clientId) {
+        log.info("Retrieving all Vapi assistants assigned to client ID: {}", clientId);
+
+        // Check if user has access to this client
+        if (!securityService.hasClientAccess(clientId)) {
+            log.warn("Access denied: User does not have permission to view client {}", clientId);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        try {
+            List<VapiAssistantDTO> assistants = clientService.getAssignedVapiAssistants(clientId);
+
+            log.info("Found {} assistants assigned to client ID: {}", assistants.size(), clientId);
+
+            return ResponseEntity.ok(assistants);
+        } catch (ResourceNotFoundException e) {
+            log.error("Client not found with ID: {}", clientId);
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Error retrieving assistants for client ID: {}", clientId, e);
+            throw e;
+        }
+    }
+
+    /**
+     * Add a Vapi assistant to a client
+     * @param clientId Client ID
+     * @param request Request containing Vapi assistant ID
+     * @return Updated client DTO
+     */
+    @Operation(
+        summary = "Add Vapi assistant to client", 
+        description = "Adds a Vapi assistant to a client's list of assistants"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200", 
+            description = "Assistant successfully added to client",
+            content = @Content(schema = @Schema(implementation = ClientDTO.class))
+        ),
+        @ApiResponse(responseCode = "400", description = "Invalid request data"),
+        @ApiResponse(responseCode = "404", description = "Client not found"),
+        @ApiResponse(responseCode = "403", description = "Not authorized to add assistants")
+    })
+    @PostMapping("/api/clients/{clientId}/add-assistant")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ClientDTO> addAssistantToClient(
+            @PathVariable Long clientId, 
+            @Valid @RequestBody AssignAssistantRequest request) {
+
+        log.info("Adding Vapi assistant ID {} to client ID {}", request.getVapiAssistantId(), clientId);
+
+        ClientDTO updatedClient = clientService.addVapiAssistant(clientId, request.getVapiAssistantId());
+
+        log.info("Successfully added Vapi assistant to client {}", clientId);
+
+        return ResponseEntity.ok(updatedClient);
+    }
+
+    /**
+     * Remove a Vapi assistant from a client
+     * @param clientId Client ID
+     * @param assistantId Assistant ID to remove
+     * @return Updated client DTO
+     */
+    @Operation(
+        summary = "Remove Vapi assistant from client", 
+        description = "Removes a Vapi assistant from a client's list of assistants"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200", 
+            description = "Assistant successfully removed from client",
+            content = @Content(schema = @Schema(implementation = ClientDTO.class))
+        ),
+        @ApiResponse(responseCode = "404", description = "Client not found"),
+        @ApiResponse(responseCode = "403", description = "Not authorized to remove assistants")
+    })
+    @PostMapping("/api/clients/{clientId}/remove-assistant/{assistantId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ClientDTO> removeAssistantFromClient(
+            @PathVariable Long clientId,
+            @PathVariable String assistantId) {
+
+        log.info("Removing Vapi assistant ID {} from client ID {}", assistantId, clientId);
+
+        ClientDTO updatedClient = clientService.removeVapiAssistant(clientId, assistantId);
+
+        log.info("Successfully removed Vapi assistant from client {}", clientId);
+
+        return ResponseEntity.ok(updatedClient);
     }
 }

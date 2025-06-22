@@ -2,6 +2,7 @@ package com.sfaai.sfaai.service;
 
 import com.sfaai.sfaai.dto.ClientCreateDTO;
 import com.sfaai.sfaai.dto.ClientDTO;
+import com.sfaai.sfaai.dto.VapiAssistantDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -104,9 +105,32 @@ public interface ClientService {
     ClientDTO unassignVapiAssistant(Long clientId);
 
     /**
+     * Add a Vapi assistant to a client's list of assistants
+     * @param clientId Client ID
+     * @param vapiAssistantId Vapi assistant ID
+     * @return Updated client DTO
+     */
+    ClientDTO addVapiAssistant(Long clientId, String vapiAssistantId);
+
+    /**
+     * Remove a Vapi assistant from a client's list of assistants
+     * @param clientId Client ID
+     * @param vapiAssistantId Vapi assistant ID
+     * @return Updated client DTO
+     */
+    ClientDTO removeVapiAssistant(Long clientId, String vapiAssistantId);
+
+    /**
      * Find all clients assigned to a specific Vapi assistant
      * @param assistantId The Vapi assistant ID
      * @return List of client DTOs assigned to the assistant
      */
     List<ClientDTO> findClientsByAssistantId(String assistantId);
+
+    /**
+     * Get all Vapi assistants assigned to a client
+     * @param clientId The client ID
+     * @return List of VapiAssistantDTO objects assigned to the client
+     */
+    List<VapiAssistantDTO> getAssignedVapiAssistants(Long clientId);
 }

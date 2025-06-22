@@ -1,5 +1,6 @@
 package com.sfaai.sfaai.controller;
 
+import com.sfaai.sfaai.dto.VapiAssistantDTO;
 import com.sfaai.sfaai.dto.VapiCreateAssistantRequest;
 import com.sfaai.sfaai.dto.VapiCreateAssistantResponse;
 import com.sfaai.sfaai.dto.VapiListAssistantsResponse;
@@ -100,6 +101,20 @@ public class AdminVapiAgentController {
 
         log.info("Successfully retrieved {} Vapi assistants", 
                 response.getAssistants() != null ? response.getAssistants().size() : 0);
+
+        // Debug DTO values before returning from controller
+        if (response.getAssistants() != null && !response.getAssistants().isEmpty()) {
+            log.debug("CONTROLLER DEBUG: Inspecting assistants before returning response");
+            for (int i = 0; i < Math.min(3, response.getAssistants().size()); i++) {
+                VapiAssistantDTO assistant = response.getAssistants().get(i);
+                log.debug("Assistant #{}: ID={}, Name={}", i+1, assistant.getAssistantId(), assistant.getName());
+                log.debug("  - firstMessage: '{}'", assistant.getFirstMessage());
+
+                if (assistant.getFirstMessage() == null) {
+                    log.debug("  - WARNING: firstMessage is null for this assistant");
+                }
+            }
+        }
 
         return ResponseEntity.ok(response);
     }

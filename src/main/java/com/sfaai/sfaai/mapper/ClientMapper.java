@@ -27,6 +27,8 @@ public class ClientMapper implements EntityMapper<ClientDTO, Client> {
                 .phone(entity.getPhone())
                 .role(entity.getRole())
                 .apiKey(entity.getApiKey())
+                .vapiAssistantId(entity.getVapiAssistantId())
+                .vapiAssistantIds(entity.getVapiAssistantIds())
                 .build();
     }
 

@@ -6,6 +6,8 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
+import java.util.List;
+
 @NoArgsConstructor
 @Getter
 @Setter
@@ -29,6 +31,8 @@ public class ClientDTO {
     private String phone;
 
     private String apiKey;
-
     private String vapiAssistantId;
+    private List<String> vapiAssistantIds;
+
+
 }

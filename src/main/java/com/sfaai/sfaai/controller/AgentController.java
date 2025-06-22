@@ -11,11 +11,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -23,6 +25,7 @@ import java.util.List;
 @RequestMapping("/api/agents")
 @RequiredArgsConstructor
 @Tag(name = "Agent Management", description = "Endpoints for managing AI agents")
+@Slf4j
 public class AgentController {
     private final AgentService agentService;
 
@@ -104,11 +107,20 @@ public class AgentController {
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<AgentDTO> update(@PathVariable Long id, @Valid @RequestBody AgentDTO dto) {
-        AgentDTO updated = agentService.updateAgent(id, dto);
-        if (updated == null) {
+        try {
+            AgentDTO updated = agentService.updateAgent(id, dto);
+            if (updated == null) {
+                log.warn("Agent update returned null for ID: {}", id);
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(updated);
+        } catch (ResourceNotFoundException e) {
+            log.error("Agent not found for update with ID: {}", id, e);
             return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Error updating agent with ID: {}", id, e);
+            throw e;
         }
-        return ResponseEntity.ok(updated);
     }
 
     /**
@@ -126,8 +138,16 @@ public class AgentController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        agentService.deleteAgent(id);
-        return ResponseEntity.noContent().build();
+        try {
+            agentService.deleteAgent(id);
+            return ResponseEntity.noContent().build();
+        } catch (ResourceNotFoundException e) {
+            log.error("Agent not found for deletion with ID: {}", id, e);
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Error deleting agent with ID: {}", id, e);
+            throw e;
+        }
     }
 
     /**
@@ -138,12 +158,22 @@ public class AgentController {
     @Operation(summary = "Get agents by client", description = "Retrieves all agents belonging to a specific client",
             responses = {
                 @ApiResponse(responseCode = "200", description = "Agents retrieved successfully"),
+                @ApiResponse(responseCode = "404", description = "Client not found"),
+                @ApiResponse(responseCode = "500", description = "Server error"),
                 @ApiResponse(responseCode = "403", description = "Not authorized to view these agents")
             })
     @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
     @GetMapping("/by-client/{clientId}")
     public ResponseEntity<List<AgentDTO>> getAgentsByClient(@PathVariable Long clientId) {
-        List<AgentDTO> agents = agentService.getAgentsByClientId(clientId);
-        return ResponseEntity.ok(agents);
+        try {
+            List<AgentDTO> agents = agentService.getAgentsByClientId(clientId);
+            return ResponseEntity.ok(agents.isEmpty() ? new ArrayList<>() : agents);
+        } catch (ResourceNotFoundException e) {
+            log.error("Client not found with ID: {}", clientId, e);
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Error retrieving agents for client ID: {}", clientId, e);
+            throw e;
+        }
     }
 }

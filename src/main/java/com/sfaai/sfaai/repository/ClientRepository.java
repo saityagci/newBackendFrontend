@@ -93,4 +93,12 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
      * @return List of clients assigned to the assistant
      */
     List<Client> findByVapiAssistantId(String vapiAssistantId);
+
+    /**
+     * Find all clients that have a specific Vapi assistant ID in their vapiAssistantIds list
+     * @param assistantId The Vapi assistant ID
+     * @return List of clients with the assistant ID in their vapiAssistantIds
+     */
+    @Query("SELECT c FROM Client c WHERE :assistantId MEMBER OF c.vapiAssistantIds")
+    List<Client> findByVapiAssistantIdsContaining(@Param("assistantId") String assistantId);
 }

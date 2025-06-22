@@ -53,6 +53,12 @@ public class Client {
     @Column(name = "vapi_assistant_id", length = 64)
     private String vapiAssistantId;
 
+    @ElementCollection
+    @CollectionTable(name = "client_vapi_assistants", joinColumns = @JoinColumn(name = "client_id"))
+    @Column(name = "assistant_id")
+    @Builder.Default
+    private List<String> vapiAssistantIds = new ArrayList<>();
+
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Agent> agents = new ArrayList<>();
