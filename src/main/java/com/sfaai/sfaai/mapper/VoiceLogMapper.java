@@ -40,6 +40,7 @@ public class VoiceLogMapper implements EntityMapper<VoiceLogDTO, VoiceLog> {
                 .audioUrl(entity.getAudioUrl())
                 .transcript(entity.getTranscript())
                 .rawPayload(entity.getRawPayload())
+                .conversationData(entity.getConversationData())
                 .createdAt(entity.getCreatedAt())
                 .build();
     }
@@ -59,6 +60,7 @@ public class VoiceLogMapper implements EntityMapper<VoiceLogDTO, VoiceLog> {
                 .audioUrl(dto.getAudioUrl())
                 .transcript(dto.getTranscript())
                 .rawPayload(dto.getRawPayload())
+                .conversationData(dto.getConversationData())
                 .status(VoiceLog.Status.INITIATED) // Default status
                 .build();
 
@@ -95,6 +97,7 @@ public class VoiceLogMapper implements EntityMapper<VoiceLogDTO, VoiceLog> {
                 .audioUrl(dto.getAudioUrl())
                 .transcript(dto.getTranscript())
                 .rawPayload(dto.getRawPayload())
+                .conversationData(dto.getConversationData())
                 .status(VoiceLog.Status.INITIATED) // Default status
                 .build();
 

@@ -65,8 +65,15 @@ public class VoiceLog {
     @JoinColumn(name = "agent_id", nullable = false)
     private Agent agent;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assistant_id", nullable = false)
+    private VapiAssistant vapiAssistant;
+
     @Column(name = "metadata", columnDefinition = "TEXT")
     private String metadata;
+
+    @Column(name = "conversation_data", columnDefinition = "TEXT")
+    private String conversationData;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

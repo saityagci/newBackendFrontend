@@ -28,4 +28,5 @@ public class VoiceLogCreateDTO {
     private String audioUrl;
     private String transcript;
     private String rawPayload;
+    private String conversationData; // structured conversation data
 }

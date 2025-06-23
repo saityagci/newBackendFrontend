@@ -31,5 +31,6 @@ public class VoiceLogDTO {
     private String audioUrl;
     private String transcript;
     private String rawPayload; // for debugging or admin use
+    private String conversationData; // structured conversation data
     private LocalDateTime createdAt;
 }
