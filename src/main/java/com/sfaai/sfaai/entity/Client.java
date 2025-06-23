@@ -50,14 +50,19 @@ public class Client {
     @Column(name = "api_key", nullable = false, unique = true, length = 36)
     private String apiKey;
 
+    /**
+     * Primary assistant assigned to the client (legacy support)
+     */
     @Column(name = "vapi_assistant_id", length = 64)
     private String vapiAssistantId;
 
-    @ElementCollection
-    @CollectionTable(name = "client_vapi_assistants", joinColumns = @JoinColumn(name = "client_id"))
-    @Column(name = "assistant_id")
+    /**
+     * List of all assistants assigned to this client
+     * A client can have multiple assistants assigned
+     */
+    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<String> vapiAssistantIds = new ArrayList<>();
+    private List<VapiAssistant> vapiAssistants = new ArrayList<>();
 
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
@@ -78,5 +83,46 @@ public class Client {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    /**
+     * Helper method to add a VapiAssistant to this client
+     * Maintains the bidirectional relationship
+     * @param assistant The assistant to add
+     */
+    public void addVapiAssistant(VapiAssistant assistant) {
+        if (!vapiAssistants.contains(assistant)) {
+            vapiAssistants.add(assistant);
+            assistant.setClient(this);
+
+            // Update legacy vapiAssistantId if it's not set yet
+            if (vapiAssistantId == null) {
+                vapiAssistantId = assistant.getAssistantId();
+            }
+        }
+    }
+
+    /**
+     * Helper method to remove a VapiAssistant from this client
+     * Maintains the bidirectional relationship
+     * @param assistant The assistant to remove
+     */
+    public void removeVapiAssistant(VapiAssistant assistant) {
+        vapiAssistants.remove(assistant);
+        assistant.setClient(null);
+
+        // Update legacy vapiAssistantId if it matches the removed assistant
+        if (vapiAssistantId != null && vapiAssistantId.equals(assistant.getAssistantId())) {
+            vapiAssistantId = vapiAssistants.isEmpty() ? null : vapiAssistants.get(0).getAssistantId();
+        }
+    }
+
+    /**
+     * Helper method to remove all VapiAssistants from this client
+     */
+    public void clearVapiAssistants() {
+        vapiAssistants.forEach(assistant -> assistant.setClient(null));
+        vapiAssistants.clear();
+        vapiAssistantId = null;
+    }
 }
 

@@ -21,11 +21,8 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -246,29 +243,27 @@ public class VapiAgentServiceImpl implements VapiAgentService {
                             }
                             // Map transcriber info
                             if (node.has("transcriber") && !node.get("transcriber").isNull()) {
-                                JsonNode transcriberNode = node.get("voice");
+                                JsonNode transcriberNode = node.get("transcriber");
                                 VapiAssistantDTO.TranscriberInfo transcriberInfo = new VapiAssistantDTO.TranscriberInfo();
-                                VapiAssistantDTO.VoiceInfo voiceInfo = new VapiAssistantDTO.VoiceInfo();
+                              if (transcriberNode.has("provider")) {
+                                  transcriberInfo.setProvider(transcriberNode.get("provider").asText());
+                              }
+                              if (transcriberNode.has("language")) {
+                                  transcriberInfo.setLanguage(transcriberNode.get("language").asText());
+                              }
+                              if (transcriberNode.has("model")){
+                                  transcriberInfo.setModel(transcriberNode.get("model").asText());
+                              }
+                                
+                              dto.setTranscriber(transcriberInfo);
+                              log.debug("Manually mapped transcriber: provider={}, language={}, model={}", 
+                                      transcriberInfo.getProvider(), transcriberInfo.getLanguage(), transcriberInfo.getModel());
 
-                                if (transcriberNode.has("model")) {
-                                    transcriberInfo.setModel(transcriberNode.get("model").asText());
-                                }
-                                if (transcriberNode.has("model")) {
-                                    transcriberInfo.setLanguage(transcriberNode.get("language").asText());
-                                }
-
-                                if (transcriberNode.has("provider")) {
-                                    transcriberInfo.setProvider(transcriberNode.get("provider").asText());
-
-                                }
-
-                                dto.setVoice(voiceInfo);
-                                dto.setTranscriber(transcriberInfo);
-                                log.debug("Manually mapped voice: provider={}, voice_id={}",
-                                        voiceInfo.getProvider(), voiceInfo.getVoiceId());
+                               
                             } else {
-                                log.debug("No voice information found in the response for assistant ID: {}", dto.getAssistantId());
+                                log.debug("No transcriber information found in the response for assistant ID: {}", dto.getAssistantId());
                             }
+                           
 
                             // Add to list
                             manuallyMappedAssistants.add(dto);

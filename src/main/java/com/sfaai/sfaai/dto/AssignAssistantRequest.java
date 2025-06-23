@@ -1,20 +1,20 @@
 package com.sfaai.sfaai.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 /**
  * DTO for assigning a Vapi assistant to a client
  */
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class AssignAssistantRequest {
 
     @NotBlank(message = "Vapi assistant ID is required")
+    @JsonProperty("vapiAssistantId")
     private String vapiAssistantId;
 }

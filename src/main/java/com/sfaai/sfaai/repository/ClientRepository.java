@@ -1,6 +1,7 @@
 package com.sfaai.sfaai.repository;
 
 import com.sfaai.sfaai.entity.Client;
+import com.sfaai.sfaai.entity.VapiAssistant;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -95,10 +96,12 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
     List<Client> findByVapiAssistantId(String vapiAssistantId);
 
     /**
-     * Find all clients that have a specific Vapi assistant ID in their vapiAssistantIds list
+     * Find all clients that have a specific Vapi assistant ID in their vapiAssistants list
      * @param assistantId The Vapi assistant ID
-     * @return List of clients with the assistant ID in their vapiAssistantIds
+     * @return List of clients with the assistant ID in their vapiAssistants
      */
-    @Query("SELECT c FROM Client c WHERE :assistantId MEMBER OF c.vapiAssistantIds")
+    @Query("SELECT c FROM Client c JOIN c.vapiAssistants v WHERE v.assistantId = :assistantId")
     List<Client> findByVapiAssistantIdsContaining(@Param("assistantId") String assistantId);
+
+    List<Client> findByVapiAssistantsContaining(VapiAssistant assistant);
 }

@@ -123,5 +123,13 @@ public class VapiAssistantDTO {
         private String provider;
         private String model;
         private String language;
+        @Override
+        public String toString() {
+            return "TranscriberInfo{" +
+                    "language='" + language + '\'' +
+                    ", provider='" + provider + '\'' +
+                    ", model='" + model + '\'' +
+                    '}';
+        }
     }
 }

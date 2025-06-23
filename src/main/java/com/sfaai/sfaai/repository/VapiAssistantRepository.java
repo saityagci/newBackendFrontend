@@ -1,5 +1,6 @@
 package com.sfaai.sfaai.repository;
 
+import com.sfaai.sfaai.entity.Client;
 import com.sfaai.sfaai.entity.VapiAssistant;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -14,6 +15,20 @@ public interface VapiAssistantRepository extends JpaRepository<VapiAssistant, St
      * @return List of assistants
      */
     List<VapiAssistant> findByAssistantIdIn(List<String> assistantIds);
+
+    /**
+     * Find all assistants assigned to a specific client
+     * @param client The client
+     * @return List of assistants assigned to the client
+     */
+    List<VapiAssistant> findByClient(Client client);
+
+    /**
+     * Find all assistants assigned to a specific client ID
+     * @param clientId The client ID
+     * @return List of assistants assigned to the client
+     */
+    List<VapiAssistant> findByClientId(Long clientId);
 
     /**
      * Find assistants by status

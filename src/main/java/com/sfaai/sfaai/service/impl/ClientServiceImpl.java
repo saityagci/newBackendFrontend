@@ -226,13 +226,26 @@ public class ClientServiceImpl implements ClientService {
 
         client.setVapiAssistantId(vapiAssistantId);
 
-        // Also add to the list of assistants
-        if (!client.getVapiAssistantIds().contains(vapiAssistantId)) {
-            client.getVapiAssistantIds().add(vapiAssistantId);
-        }
+        // Get or create the assistant entity
+        VapiAssistant assistant = vapiAssistantRepository.findById(vapiAssistantId)
+                .orElseGet(() -> updateLocalAssistantFromVapi(vapiAssistantId));
 
-        // Save or update the assistant in the local database
-        updateLocalAssistantFromVapi(vapiAssistantId);
+        if (assistant != null) {
+            // Check if this assistant is already associated with this client
+            boolean alreadyAssociated = client.getVapiAssistants().stream()
+                    .anyMatch(a -> a.getAssistantId().equals(vapiAssistantId));
+
+            if (!alreadyAssociated) {
+                // Set the client reference on the assistant
+                assistant.setClient(client);
+
+                // Save the assistant first to ensure it exists
+                vapiAssistantRepository.save(assistant);
+
+                // Add to the collection using the helper method to maintain bidirectional relationship
+                client.addVapiAssistant(assistant);
+            }
+        }
 
         Client updatedClient = clientRepository.save(client);
         return clientMapper.toDto(updatedClient);
@@ -252,9 +265,12 @@ public class ClientServiceImpl implements ClientService {
         String oldAssistantId = client.getVapiAssistantId();
         client.setVapiAssistantId(null);
 
-        // Also remove from the list of assistants if it exists
+        // Remove the assistant from the client's collection if it exists
         if (oldAssistantId != null) {
-            client.getVapiAssistantIds().remove(oldAssistantId);
+            client.getVapiAssistants().stream()
+                    .filter(assistant -> assistant.getAssistantId().equals(oldAssistantId))
+                    .findFirst()
+                    .ifPresent(client::removeVapiAssistant);
         }
 
         Client updatedClient = clientRepository.save(client);
@@ -270,16 +286,46 @@ public class ClientServiceImpl implements ClientService {
     @Override
     @Transactional
     public ClientDTO addVapiAssistant(Long clientId, String vapiAssistantId) {
-        Client client = clientRepository.findById(clientId)
-                .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + clientId));
+        log.info("Adding Vapi assistant {} to client {}", vapiAssistantId, clientId);
 
-        // Add to the list of assistants if not already there
-        if (!client.getVapiAssistantIds().contains(vapiAssistantId)) {
-            client.getVapiAssistantIds().add(vapiAssistantId);
+        // Verify the client exists
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found with ID: " + clientId));
+
+        // Get or create the assistant entity
+        VapiAssistant assistant = vapiAssistantRepository.findById(vapiAssistantId)
+                .orElseGet(() -> {
+                    // Try to create it if it doesn't exist
+                    VapiAssistant newAssistant = updateLocalAssistantFromVapi(vapiAssistantId);
+                    if (newAssistant == null) {
+                        throw new ResourceNotFoundException("Vapi assistant not found with ID: " + vapiAssistantId);
+                    }
+                    return newAssistant;
+                });
+
+        // Check if this assistant is already associated with this client
+        boolean alreadyAssociated = client.getVapiAssistants().stream()
+                .anyMatch(a -> a.getAssistantId().equals(vapiAssistantId));
+
+        if (!alreadyAssociated) {
+            // Set the client reference on the assistant
+            assistant.setClient(client);
+
+            // Save the assistant first to ensure it exists
+            vapiAssistantRepository.save(assistant);
+
+            // Add to the collection using the helper method to maintain bidirectional relationship
+            client.addVapiAssistant(assistant);
+            log.info("Added Vapi assistant {} to client {}'s list", vapiAssistantId, clientId);
+        } else {
+            log.info("Vapi assistant {} already assigned to client {}", vapiAssistantId, clientId);
         }
 
-        // Save or update the assistant in the local database
-        updateLocalAssistantFromVapi(vapiAssistantId);
+        // If the client doesn't have a primary assistant, set this one as primary
+        if (client.getVapiAssistantId() == null) {
+            client.setVapiAssistantId(vapiAssistantId);
+            log.info("Set Vapi assistant {} as primary assistant for client {}", vapiAssistantId, clientId);
+        }
 
         Client updatedClient = clientRepository.save(client);
         return clientMapper.toDto(updatedClient);
@@ -294,15 +340,38 @@ public class ClientServiceImpl implements ClientService {
     @Override
     @Transactional
     public ClientDTO removeVapiAssistant(Long clientId, String vapiAssistantId) {
+        log.info("Removing Vapi assistant {} from client {}", vapiAssistantId, clientId);
+
+        // Verify the client exists
         Client client = clientRepository.findById(clientId)
-                .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + clientId));
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found with ID: " + clientId));
 
-        // Remove from the list of assistants
-        client.getVapiAssistantIds().remove(vapiAssistantId);
+        // Find the assistant in the client's collection
+        VapiAssistant assistantToRemove = client.getVapiAssistants().stream()
+                .filter(assistant -> assistant.getAssistantId().equals(vapiAssistantId))
+                .findFirst()
+                .orElse(null);
 
-        // If it's the primary assistant, clear that too
+        // Remove if found
+        if (assistantToRemove != null) {
+            client.removeVapiAssistant(assistantToRemove);
+            log.info("Removed Vapi assistant {} from client {}'s list", vapiAssistantId, clientId);
+        } else {
+            log.info("Vapi assistant {} was not in client {}'s list", vapiAssistantId, clientId);
+        }
+
+        // If this was the primary assistant, update the primary assistant
         if (vapiAssistantId.equals(client.getVapiAssistantId())) {
-            client.setVapiAssistantId(null);
+            // If there are other assistants, set the first one as primary
+            if (!client.getVapiAssistants().isEmpty()) {
+                client.setVapiAssistantId(client.getVapiAssistants().get(0).getAssistantId());
+                log.info("Set Vapi assistant {} as new primary assistant for client {}", 
+                        client.getVapiAssistantId(), clientId);
+            } else {
+                // No more assistants, clear the primary assistant
+                client.setVapiAssistantId(null);
+                log.info("Cleared primary assistant for client {}", clientId);
+            }
         }
 
         Client updatedClient = clientRepository.save(client);
@@ -320,8 +389,11 @@ public class ClientServiceImpl implements ClientService {
         // Get clients with this ID as primary assistant
         List<Client> primaryClients = clientRepository.findByVapiAssistantId(assistantId);
 
-        // Get clients with this ID in their assistantIds list
-        List<Client> secondaryClients = clientRepository.findByVapiAssistantIdsContaining(assistantId);
+        // Get clients that have this assistant in their collection
+        VapiAssistant assistant = vapiAssistantRepository.findById(assistantId).orElse(null);
+        List<Client> secondaryClients = assistant != null ? 
+                clientRepository.findByVapiAssistantsContaining(assistant) :
+                new ArrayList<>();
 
         // Combine the lists, removing duplicates
         Set<Client> allClients = new HashSet<>();
@@ -342,21 +414,24 @@ public class ClientServiceImpl implements ClientService {
     @Transactional(readOnly = true)
     public List<VapiAssistantDTO> getAssignedVapiAssistants(Long clientId) {
         Client client = clientRepository.findById(clientId)
-                .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + clientId));
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found with ID: " + clientId));
 
-        // Get the assistant IDs from the client
-        List<String> assistantIds = client.getVapiAssistantIds();
+        // Get all assistants from the client's entity relationship
+        List<VapiAssistantDTO> assistants = client.getVapiAssistants().stream()
+                .map(vapiAssistantMapper::toDto)
+                .collect(Collectors.toList());
 
-        // If there are no assistants, return empty list
-        if (assistantIds == null || assistantIds.isEmpty()) {
-            return new ArrayList<>();
+        // If there are no assistants in the collection but the client has a primary assistant ID,
+        // try to find that assistant and add it (backward compatibility)
+        if (assistants.isEmpty() && client.getVapiAssistantId() != null) {
+            VapiAssistant primaryAssistant = vapiAssistantRepository.findById(client.getVapiAssistantId())
+                    .orElse(null);
+            if (primaryAssistant != null) {
+                assistants.add(vapiAssistantMapper.toDto(primaryAssistant));
+            }
         }
 
-        // Get assistants from local database
-        List<VapiAssistant> assistants = vapiAssistantRepository.findByAssistantIdIn(assistantIds);
-
-        // Map to DTOs and return
-        return vapiAssistantMapper.toDtoList(assistants);
+        return assistants;
     }
 
     /**
@@ -394,6 +469,10 @@ public class ClientServiceImpl implements ClientService {
                 if (assistantDTO != null) {
                     // Convert to entity and save
                     VapiAssistant assistant = vapiAssistantMapper.toEntity(assistantDTO);
+                    // Important: preserve any existing client relationship when updating
+                    if (existingAssistant != null && existingAssistant.getClient() != null) {
+                        assistant.setClient(existingAssistant.getClient());
+                    }
                     return vapiAssistantRepository.save(assistant);
                 } else {
                     // Create a placeholder with just the ID

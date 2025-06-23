@@ -20,6 +20,10 @@ public class VapiAssistant {
     @Column(length = 64)
     private String assistantId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "client_id")
+    private Client client;
+
     @Column(name = "last_synced_at")
     private LocalDateTime lastSyncedAt;
 
@@ -64,4 +68,20 @@ public class VapiAssistant {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    /**
+     * Custom toString method to prevent circular reference issues
+     */
+    @Override
+    public String toString() {
+        return "VapiAssistant{" +
+                "assistantId='" + assistantId + '\'' +
+                ", name='" + name + '\'' +
+                ", status='" + status + '\'' +
+                ", modelName='" + modelName + '\'' +
+                ", syncStatus='" + syncStatus + '\'' +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                '}';
+    }
 }
