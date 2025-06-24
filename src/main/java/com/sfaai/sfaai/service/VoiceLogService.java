@@ -61,6 +61,13 @@ public interface VoiceLogService {
      */
     VoiceLogDTO createVoiceLog(VoiceLogCreateDTO dto);
     VoiceLogDTO save(VoiceLogCreateDTO dto);
+
+    /**
+     * Save a voice log from Vapi call log
+     * @param vapiCallLog The Vapi call log DTO
+     * @return Saved voice log DTO
+     */
+    VoiceLogDTO saveVapiCallLog(com.sfaai.sfaai.dto.VapiCallLogDTO vapiCallLog);
     /**
      * Update voice log status
      * @param id Voice log id
