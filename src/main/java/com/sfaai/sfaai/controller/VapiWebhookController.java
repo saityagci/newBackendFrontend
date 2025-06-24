@@ -1,6 +1,8 @@
 package com.sfaai.sfaai.controller;
 
 import com.sfaai.sfaai.dto.VapiCallLogDTO;
+import com.sfaai.sfaai.dto.VapiWebhookPayloadDTO;
+import com.sfaai.sfaai.dto.VoiceLogCreateDTO;
 import com.sfaai.sfaai.dto.VoiceLogDTO;
 import com.sfaai.sfaai.entity.Client;
 import com.sfaai.sfaai.entity.VapiAssistant;
@@ -110,13 +112,13 @@ public class VapiWebhookController {
     )
     @PostMapping(value = "/call-logs", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Transactional
-    public ResponseEntity<Map<String, Object>> receiveCallLogWebhook(@RequestBody VapiCallLogDTO callLog) {
+    public ResponseEntity<Map<String, Object>> receiveCallLogWebhook(@RequestBody VapiWebhookPayloadDTO payload) {
         log.info("Received Vapi call log webhook");
-        log.debug("Webhook payload properties: {}", callLog.getProperties());
+        log.debug("Webhook payload: {}", payload);
 
         try {
-            // Parse the webhook payload if needed (extract fields from properties map)
-            webhookMapper.parseWebhookPayload(callLog);
+            // Parse the webhook payload
+            VapiCallLogDTO callLog = webhookMapper.parseWebhookPayload(payload);
             log.info("Parsed call log with ID: {}, assistant ID: {}", callLog.getCallId(), callLog.getAssistantId());
 
             // If the call has no ID, generate a response with an error
@@ -199,23 +201,11 @@ public class VapiWebhookController {
                 }
             }
 
-            // Set required fields on the call log
-            callLog.setClientId(client.getId());
-            callLog.setAgentId(agentId);
-            callLog.setProvider("vapi");
+            // Convert to VoiceLogCreateDTO
+            VoiceLogCreateDTO createDTO = webhookMapper.toVoiceLogCreateDTO(callLog, client.getId(), agentId);
 
-            // Convert messages list to JSON for storage if not already done
-            if (callLog.getMessages() != null && !callLog.getMessages().isEmpty() && callLog.getConversationData() == null) {
-                try {
-                    callLog.setConversationData(webhookMapper.getObjectMapper().writeValueAsString(callLog.getMessages()));
-                } catch (Exception e) {
-                    log.warn("Failed to serialize conversation data", e);
-                }
-            }
-
-            // Save to database directly without intermediate DTO
-            VoiceLogDTO savedLog = webhookMapper.toVoiceLogDTO(callLog);
-            savedLog = voiceLogService.saveVapiCallLog(callLog);
+            // Save to database
+            VoiceLogDTO savedLog = voiceLogService.createVoiceLog(createDTO);
             log.info("Successfully saved voice log with ID: {}", savedLog.getId());
 
             // Return success response

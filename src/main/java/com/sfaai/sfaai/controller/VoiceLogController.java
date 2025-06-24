@@ -1,10 +1,10 @@
 package com.sfaai.sfaai.controller;
 
-import com.sfaai.sfaai.dto.VapiCallLogDTO;
 import com.sfaai.sfaai.dto.VoiceLogCreateDTO;
 import com.sfaai.sfaai.dto.VoiceLogDTO;
+import com.sfaai.sfaai.dto.VoiceLogWebhookDTO;
 import com.sfaai.sfaai.exception.WebhookException;
-import com.sfaai.sfaai.mapper.VapiWebhookMapper;
+import com.sfaai.sfaai.mapper.VoiceLogWebhookMapper;
 import com.sfaai.sfaai.service.VoiceLogService;
 import com.sfaai.sfaai.util.WebhookSignatureVerifier;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,7 +27,6 @@ import org.springframework.web.bind.annotation.*;
 public class VoiceLogController {
     private final VoiceLogService voiceLogService;
     private final WebhookSignatureVerifier signatureVerifier;
-    private final VapiWebhookMapper vapiWebhookMapper;
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('CLIENT')")
@@ -58,17 +57,15 @@ public class VoiceLogController {
     )
     @Transactional
     public ResponseEntity<VoiceLogDTO> receiveVoiceLogWebhook(
-            @Valid @RequestBody VapiCallLogDTO payload,
+            @Valid @RequestBody VoiceLogWebhookDTO payload,
             @RequestHeader(value = "X-Webhook-Signature", required = true) String signature
     ) {
         log.info("Received webhook for provider: {}", payload.getProvider());
         validateWebhookSignature(signature, payload);
 
         try {
-            // Make sure fields are properly extracted from properties if needed
-            vapiWebhookMapper.parseWebhookPayload(payload);
-
-            VoiceLogDTO saved = voiceLogService.saveVapiCallLog(payload);
+            VoiceLogCreateDTO dto = VoiceLogWebhookMapper.toCreateDTO(payload);
+            VoiceLogDTO saved = voiceLogService.createVoiceLog(dto);
             log.info("Successfully processed webhook, created voice log ID: {}", saved.getId());
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
         } catch (Exception e) {
@@ -77,7 +74,7 @@ public class VoiceLogController {
         }
     }
 
-    private void validateWebhookSignature(String signature, VapiCallLogDTO payload) {
+    private void validateWebhookSignature(String signature, VoiceLogWebhookDTO payload) {
         if (!signatureVerifier.verifySignature(signature, payload)) {
             log.warn("Invalid webhook signature received");
             throw new WebhookException("Invalid webhook signature");

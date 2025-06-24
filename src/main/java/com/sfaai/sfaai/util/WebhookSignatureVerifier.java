@@ -1,22 +1,17 @@
 package com.sfaai.sfaai.util;
 
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-// Note: javax.crypto is still used even in Jakarta EE applications as these crypto classes were not migrated to jakarta namespace
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
-
-
-
 
 /**
  * Utility for verifying webhook signatures

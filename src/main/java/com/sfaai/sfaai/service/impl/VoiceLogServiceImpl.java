@@ -1,12 +1,10 @@
 package com.sfaai.sfaai.service.impl;
 
 
-import com.sfaai.sfaai.dto.VapiCallLogDTO;
 import com.sfaai.sfaai.dto.VoiceLogCreateDTO;
 import com.sfaai.sfaai.dto.VoiceLogDTO;
 import com.sfaai.sfaai.entity.VoiceLog;
 import com.sfaai.sfaai.exception.ResourceNotFoundException;
-import com.sfaai.sfaai.mapper.VapiWebhookMapper;
 import com.sfaai.sfaai.mapper.VoiceLogMapper;
 import com.sfaai.sfaai.repository.VoiceLogRepository;
 import com.sfaai.sfaai.service.VoiceLogService;
@@ -23,14 +21,13 @@ import java.util.List;
 
 public class VoiceLogServiceImpl implements VoiceLogService {
 
+    //private final VoiceLogRepository voiceLogRepository;
     private final VoiceLogMapper voiceLogMapper;
     private final VoiceLogRepository voiceLogRepository;
-    private final VapiWebhookMapper vapiWebhookMapper;
 
-    public VoiceLogServiceImpl(VoiceLogMapper voiceLogMapper, VoiceLogRepository voiceLogRepository, VapiWebhookMapper vapiWebhookMapper) {
+    public VoiceLogServiceImpl(VoiceLogMapper voiceLogMapper, VoiceLogRepository voiceLogRepository) {
         this.voiceLogMapper = voiceLogMapper;
         this.voiceLogRepository = voiceLogRepository;
-        this.vapiWebhookMapper = vapiWebhookMapper;
     }
 
     @Override
@@ -87,14 +84,6 @@ public class VoiceLogServiceImpl implements VoiceLogService {
     @Override
     public VoiceLogDTO save(VoiceLogCreateDTO dto) {
         VoiceLog voiceLog = voiceLogMapper.createEntityFromDto(dto);
-        VoiceLog savedVoiceLog = voiceLogRepository.save(voiceLog);
-        return voiceLogMapper.toDto(savedVoiceLog);
-    }
-
-    @Override
-    @Transactional
-    public VoiceLogDTO saveVapiCallLog(VapiCallLogDTO vapiCallLog) {
-        VoiceLog voiceLog = vapiWebhookMapper.createVoiceLogEntity(vapiCallLog);
         VoiceLog savedVoiceLog = voiceLogRepository.save(voiceLog);
         return voiceLogMapper.toDto(savedVoiceLog);
     }
