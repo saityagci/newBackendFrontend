@@ -1,0 +1,239 @@
+package com.sfaai.sfaai.controller;
+
+import com.sfaai.sfaai.dto.VapiCallLogDTO;
+import com.sfaai.sfaai.dto.VoiceLogDTO;
+import com.sfaai.sfaai.entity.Client;
+import com.sfaai.sfaai.entity.VapiAssistant;
+import com.sfaai.sfaai.mapper.VapiWebhookMapper;
+import com.sfaai.sfaai.repository.AgentRepository;
+import com.sfaai.sfaai.repository.ClientRepository;
+import com.sfaai.sfaai.repository.VapiAssistantRepository;
+import com.sfaai.sfaai.service.AudioStorageService;
+import com.sfaai.sfaai.service.VoiceLogService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/webhooks/vapi")
+@RequiredArgsConstructor
+@Slf4j
+@Tag(name = "Vapi Webhooks", description = "Endpoints for receiving webhooks from Vapi")
+public class VapiWebhookController {
+
+    private final VapiWebhookMapper webhookMapper;
+    private final VoiceLogService voiceLogService;
+    private final AudioStorageService audioStorageService;
+    private final ClientRepository clientRepository;
+    private final AgentRepository agentRepository;
+    private final VapiAssistantRepository vapiAssistantRepository;
+
+    @Operation(
+        summary = "Receive call log webhook from Vapi",
+        description = "Endpoint for receiving call log webhooks from Vapi. Accepts any JSON payload structure.",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = Object.class),
+                examples = {
+                    @ExampleObject(
+                        name = "Sample Vapi webhook payload",
+                        value = "{\n" +
+                               "  \"call\": {\n" +
+                               "    \"id\": \"call_123456789\",\n" +
+                               "    \"status\": \"completed\",\n" +
+                               "    \"startTime\": 1687452378,\n" +
+                               "    \"endTime\": 1687452498,\n" +
+                               "    \"recordingUrl\": \"https://storage.vapi.ai/recordings/call_123456789.mp3\"\n" +
+                               "  },\n" +
+                               "  \"assistant\": {\n" +
+                               "    \"id\": \"asst_abcdef123456\",\n" +
+                               "    \"name\": \"Customer Service Bot\"\n" +
+                               "  },\n" +
+                               "  \"transcript\": {\n" +
+                               "    \"text\": \"User: Hello\\nAssistant: Hi there, how can I help you today?\"\n" +
+                               "  },\n" +
+                               "  \"messages\": [\n" +
+                               "    {\n" +
+                               "      \"role\": \"user\",\n" +
+                               "      \"content\": \"Hello\",\n" +
+                               "      \"timestamp\": 1687452380\n" +
+                               "    },\n" +
+                               "    {\n" +
+                               "      \"role\": \"assistant\",\n" +
+                               "      \"content\": \"Hi there, how can I help you today?\",\n" +
+                               "      \"timestamp\": 1687452385\n" +
+                               "    }\n" +
+                               "  ]\n" +
+                               "}\n",
+                        summary = "Standard Vapi call log webhook payload"
+                    )
+                }
+            )
+        ),
+        responses = {
+            @ApiResponse(
+                responseCode = "201",
+                description = "Webhook processed successfully",
+                content = @Content(schema = @Schema(implementation = Map.class))
+            ),
+            @ApiResponse(
+                responseCode = "400",
+                description = "Invalid webhook payload"
+            ),
+            @ApiResponse(
+                responseCode = "404",
+                description = "Required resources not found (client, agent, or assistant)"
+            ),
+            @ApiResponse(
+                responseCode = "500",
+                description = "Internal server error"
+            )
+        }
+    )
+    @PostMapping(value = "/call-logs", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Transactional
+    public ResponseEntity<Map<String, Object>> receiveCallLogWebhook(@RequestBody VapiCallLogDTO callLog) {
+        log.info("Received Vapi call log webhook");
+        log.debug("Webhook payload properties: {}", callLog.getProperties());
+
+        try {
+            // Parse the webhook payload if needed (extract fields from properties map)
+            webhookMapper.parseWebhookPayload(callLog);
+            log.info("Parsed call log with ID: {}, assistant ID: {}", callLog.getCallId(), callLog.getAssistantId());
+
+            // If the call has no ID, generate a response with an error
+            if (callLog.getCallId() == null) {
+                log.warn("Call log has no ID, cannot process");
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "Call ID not found in webhook payload");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Find the assistant from the call log
+            String assistantId = callLog.getAssistantId();
+            if (assistantId == null) {
+                log.warn("Call log has no assistant ID, cannot process");
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "Assistant ID not found in webhook payload");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Lookup the assistant in the database
+            VapiAssistant assistant = vapiAssistantRepository.findById(assistantId).orElse(null);
+            if (assistant == null) {
+                log.warn("Assistant with ID {} not found in database", assistantId);
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "Assistant not found in database");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            }
+
+            // Find the client associated with this assistant
+            Client client = assistant.getClient();
+            if (client == null) {
+                // Try to find the client by using the legacy vapiAssistantId field
+                List<Client> clients = clientRepository.findByVapiAssistantId(assistantId);
+                if (!clients.isEmpty()) {
+                    client = clients.get(0);
+                } else {
+                    log.warn("No client found for assistant ID: {}", assistantId);
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("success", false);
+                    response.put("error", "No client found for this assistant");
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                }
+            }
+
+            // Find or create an agent for this client
+            Long agentId = null;
+            List<com.sfaai.sfaai.entity.Agent> agents = agentRepository.findByClientIdAndStatus(
+                    client.getId(), com.sfaai.sfaai.entity.Agent.AgentStatus.ACTIVE);
+
+            if (!agents.isEmpty()) {
+                // Use the first active agent
+                agentId = agents.get(0).getId();
+            } else {
+                log.warn("No active agent found for client ID: {}", client.getId());
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "No active agent found for the client");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            }
+
+            // Process the audio URL if present
+            String audioUrl = callLog.getAudioUrl();
+            if (audioUrl != null && !audioUrl.isEmpty()) {
+                // Download and store the audio file locally
+                try {
+                    String storedPath = audioStorageService.storeAudioFromUrl(audioUrl, callLog.getCallId());
+                    String publicUrl = audioStorageService.getPublicUrl(storedPath);
+
+                    // Update the URL in the call log
+                    if (publicUrl != null) {
+                        log.info("Updated audio URL from {} to {}", audioUrl, publicUrl);
+                        callLog.setAudioUrl(publicUrl);
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to process audio URL: {}", audioUrl, e);
+                    // Continue with the original URL
+                }
+            }
+
+            // Set required fields on the call log
+            callLog.setClientId(client.getId());
+            callLog.setAgentId(agentId);
+            callLog.setProvider("vapi");
+
+            // Convert messages list to JSON for storage if not already done
+            if (callLog.getMessages() != null && !callLog.getMessages().isEmpty() && callLog.getConversationData() == null) {
+                try {
+                    callLog.setConversationData(webhookMapper.getObjectMapper().writeValueAsString(callLog.getMessages()));
+                } catch (Exception e) {
+                    log.warn("Failed to serialize conversation data", e);
+                }
+            }
+
+            // Save to database directly without intermediate DTO
+            VoiceLogDTO savedLog = webhookMapper.toVoiceLogDTO(callLog);
+            savedLog = voiceLogService.saveVapiCallLog(callLog);
+            log.info("Successfully saved voice log with ID: {}", savedLog.getId());
+
+            // Return success response
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Webhook processed successfully");
+            response.put("voiceLogId", savedLog.getId());
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+
+        } catch (Exception e) {
+            log.error("Error processing Vapi webhook", e);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", "Internal server error: " + e.getMessage());
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+}
