@@ -114,12 +114,26 @@ public class VapiWebhookController {
     @Transactional
     public ResponseEntity<Map<String, Object>> receiveCallLogWebhook(@RequestBody VapiWebhookPayloadDTO payload) {
         log.info("Received Vapi call log webhook");
-        log.debug("Webhook payload: {}", payload);
+        // Don't log the entire payload in production to avoid sensitive data in logs
+        log.debug("Webhook payload received with keys: {}", 
+                payload != null ? String.join(", ", payload.getProperties().keySet()) : "null");
 
         try {
             // Parse the webhook payload
             VapiCallLogDTO callLog = webhookMapper.parseWebhookPayload(payload);
-            log.info("Parsed call log with ID: {}, assistant ID: {}", callLog.getCallId(), callLog.getAssistantId());
+            if (callLog == null) {
+                log.warn("Failed to parse webhook payload");
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "Failed to parse webhook payload");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Log only essential info, not the entire payload
+            log.info("Parsed call log with ID: {}, assistant ID: {}, status: {}", 
+                    callLog.getCallId(), 
+                    callLog.getAssistantId(),
+                    callLog.getStatus());
 
             // If the call has no ID, generate a response with an error
             if (callLog.getCallId() == null) {

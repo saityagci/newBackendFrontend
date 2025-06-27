@@ -21,6 +21,9 @@ public class VoiceLogCreateDTO {
     @NotBlank(message = "Provider is required")
     private String provider;
 
+    @NotBlank(message = "Assistant ID is required")
+    private String assistantId;
+
     private String externalCallId;
     private String externalAgentId;
     private LocalDateTime startedAt;

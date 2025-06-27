@@ -21,6 +21,7 @@ public interface VoiceLogRepository extends JpaRepository<VoiceLog, Long> {
      */
     List<VoiceLog> findByAgentId(Long agentId);
 
+
     /**
      * Find voice logs by agent ID with pagination
      * @param agentId The agent ID
@@ -72,7 +73,7 @@ public interface VoiceLogRepository extends JpaRepository<VoiceLog, Long> {
      * @param externalCallId The external call ID
      * @return List of voice logs with the specified external call ID
      */
-    List<VoiceLog> findByExternalCallId(String externalCallId);
+    Optional<VoiceLog> findByExternalCallId(String externalCallId);
 
     /**
      * Find voice logs created between the specified dates
@@ -104,4 +105,5 @@ public interface VoiceLogRepository extends JpaRepository<VoiceLog, Long> {
      * @return Count of voice logs for the agent
      */
     long countByAgentId(Long agentId);
+
 }

@@ -3,12 +3,13 @@ package com.sfaai.sfaai.service.impl;
 
 import com.sfaai.sfaai.dto.VoiceLogCreateDTO;
 import com.sfaai.sfaai.dto.VoiceLogDTO;
+import com.sfaai.sfaai.entity.VapiAssistant;
 import com.sfaai.sfaai.entity.VoiceLog;
 import com.sfaai.sfaai.exception.ResourceNotFoundException;
 import com.sfaai.sfaai.mapper.VoiceLogMapper;
+import com.sfaai.sfaai.repository.VapiAssistantRepository;
 import com.sfaai.sfaai.repository.VoiceLogRepository;
 import com.sfaai.sfaai.service.VoiceLogService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -16,18 +17,20 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 
 public class VoiceLogServiceImpl implements VoiceLogService {
 
-    //private final VoiceLogRepository voiceLogRepository;
     private final VoiceLogMapper voiceLogMapper;
     private final VoiceLogRepository voiceLogRepository;
+    private final VapiAssistantRepository vapiAssistantRepository;
 
-    public VoiceLogServiceImpl(VoiceLogMapper voiceLogMapper, VoiceLogRepository voiceLogRepository) {
+    public VoiceLogServiceImpl(VoiceLogMapper voiceLogMapper, VoiceLogRepository voiceLogRepository, VapiAssistantRepository vapiAssistantRepository) {
         this.voiceLogMapper = voiceLogMapper;
         this.voiceLogRepository = voiceLogRepository;
+        this.vapiAssistantRepository = vapiAssistantRepository;
     }
 
     @Override
@@ -73,13 +76,23 @@ public class VoiceLogServiceImpl implements VoiceLogService {
         return voiceLogMapper.toDtoList(voiceLogs);
     }
 
+
     @Override
     @Transactional
     public VoiceLogDTO createVoiceLog(VoiceLogCreateDTO dto) {
         VoiceLog voiceLog = voiceLogMapper.createEntityFromDto(dto);
+        // THIS IS THE KEY PART:
+        if (dto.getExternalAgentId() != null) {
+            VapiAssistant assistant = vapiAssistantRepository.findById(dto.getExternalAgentId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Assistant not found: " + dto.getExternalAgentId()));
+            voiceLog.setVapiAssistant(assistant);
+        } else {
+            throw new IllegalArgumentException("Assistant ID must not be null");
+        }
         VoiceLog savedVoiceLog = voiceLogRepository.save(voiceLog);
         return voiceLogMapper.toDto(savedVoiceLog);
     }
+
 
     @Override
     public VoiceLogDTO save(VoiceLogCreateDTO dto) {
@@ -100,7 +113,6 @@ public class VoiceLogServiceImpl implements VoiceLogService {
         if (status == VoiceLog.Status.COMPLETED && voiceLog.getEndedAt() == null) {
             voiceLog.setEndedAt(LocalDateTime.now());
         }
-
         VoiceLog updatedVoiceLog = voiceLogRepository.save(voiceLog);
         return voiceLogMapper.toDto(updatedVoiceLog);
     }

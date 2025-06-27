@@ -32,11 +32,19 @@ public class SecurityServiceImpl implements SecurityService {
 
         // Log authorities for debugging
         System.out.println("Checking access for user: " + auth.getName());
-        auth.getAuthorities().forEach(authority -> 
-            System.out.println("Authority: " + authority.getAuthority()));
+        for (Object authority : auth.getAuthorities()) {
+            System.out.println("Authority: " + ((org.springframework.security.core.GrantedAuthority)authority).getAuthority());
+        }
 
         // Admin has access to everything
-        if (auth.getAuthorities().stream().anyMatch(r -> r.getAuthority().equals("ROLE_ADMIN"))) {
+        boolean isAdmin = false;
+        for (Object authority : auth.getAuthorities()) {
+            if (((org.springframework.security.core.GrantedAuthority)authority).getAuthority().equals("ROLE_ADMIN")) {
+                isAdmin = true;
+                break;
+            }
+        }
+        if (isAdmin) {
             System.out.println("Admin access granted");
             return true;
         }
@@ -60,7 +68,14 @@ public class SecurityServiceImpl implements SecurityService {
         if (auth == null) return false;
 
         // Admin has access to everything
-        if (auth.getAuthorities().stream().anyMatch(r -> r.getAuthority().equals("ROLE_ADMIN"))) {
+        boolean isAdmin = false;
+        for (Object authority : auth.getAuthorities()) {
+            if (((org.springframework.security.core.GrantedAuthority)authority).getAuthority().equals("ROLE_ADMIN")) {
+                isAdmin = true;
+                break;
+            }
+        }
+        if (isAdmin) {
             return true;
         }
 
@@ -79,7 +94,14 @@ public class SecurityServiceImpl implements SecurityService {
         if (auth == null) return false;
 
         // Admin has access to everything
-        if (auth.getAuthorities().stream().anyMatch(r -> r.getAuthority().equals("ROLE_ADMIN"))) {
+        boolean isAdmin = false;
+        for (Object authority : auth.getAuthorities()) {
+            if (((org.springframework.security.core.GrantedAuthority)authority).getAuthority().equals("ROLE_ADMIN")) {
+                isAdmin = true;
+                break;
+            }
+        }
+        if (isAdmin) {
             return true;
         }
 
@@ -98,7 +120,14 @@ public class SecurityServiceImpl implements SecurityService {
         if (auth == null) return false;
 
         // Admin has access to everything
-        if (auth.getAuthorities().stream().anyMatch(r -> r.getAuthority().equals("ROLE_ADMIN"))) {
+        boolean isAdmin = false;
+        for (Object authority : auth.getAuthorities()) {
+            if (((org.springframework.security.core.GrantedAuthority)authority).getAuthority().equals("ROLE_ADMIN")) {
+                isAdmin = true;
+                break;
+            }
+        }
+        if (isAdmin) {
             return true;
         }
 
