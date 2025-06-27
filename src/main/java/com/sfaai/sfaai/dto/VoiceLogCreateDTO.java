@@ -33,4 +33,6 @@ public class VoiceLogCreateDTO {
     private String rawPayload;
     private String conversationData; // structured conversation data
     private com.sfaai.sfaai.entity.VoiceLog.Status status;
+    private String phoneNumber;
+    private Float durationMinutes;
 }

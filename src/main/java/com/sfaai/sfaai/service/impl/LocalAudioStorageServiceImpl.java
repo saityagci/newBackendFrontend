@@ -4,6 +4,7 @@ import com.sfaai.sfaai.service.AudioStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -21,6 +22,7 @@ import java.time.format.DateTimeFormatter;
  * Service implementation for storing audio files locally
  */
 @Service
+@Primary
 @RequiredArgsConstructor
 @Slf4j
 public class LocalAudioStorageServiceImpl implements AudioStorageService {

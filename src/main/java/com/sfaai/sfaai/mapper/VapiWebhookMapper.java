@@ -120,6 +120,16 @@ public class VapiWebhookMapper {
                     if (customer != null) phoneNumber = (String) customer.get("number");
                 }
             }
+            // Try more paths for phone number
+            if (phoneNumber == null || phoneNumber.isEmpty()) {
+                phoneNumber = (String) rootMap.get("callerPhoneNumber");
+            }
+            if (phoneNumber == null || phoneNumber.isEmpty()) {
+                phoneNumber = (String) getField.apply("phone_number");
+            }
+            if (phoneNumber == null || phoneNumber.isEmpty()) {
+                phoneNumber = (String) getField.apply("customer_number");
+            }
             builder.phoneNumber(phoneNumber);
 
             // ---- summary ----
@@ -136,7 +146,62 @@ public class VapiWebhookMapper {
                 if (artifact != null && artifact.get("recording_url") != null)
                     audioUrl = artifact.get("recording_url").toString();
             }
+            // Try alternative fields for audio URL
+            if (audioUrl == null || audioUrl.isEmpty()) {
+                audioUrl = (String) rootMap.get("recordingUrl");
+            }
+            // Try to get the recording URL from the call map
+            Map<String, Object> callInfo = (Map<String, Object>) getField.apply("call");
+            if (audioUrl == null || audioUrl.isEmpty() && callInfo != null) {
+                audioUrl = (String) callInfo.get("recordingUrl");
+            }
             builder.audioUrl(audioUrl);
+
+            // ---- durationMinutes ----
+            Float durationMinutes = null;
+            // Try direct field first
+            Object durationObj = getField.apply("durationMinutes");
+            if (durationObj instanceof Number) {
+                durationMinutes = ((Number) durationObj).floatValue();
+            } else if (durationObj instanceof String) {
+                try {
+                    durationMinutes = Float.parseFloat((String) durationObj);
+                } catch (NumberFormatException e) {
+                    log.debug("Could not parse durationMinutes as float: {}", durationObj);
+                }
+            }
+
+            // Try alternative fields if not found
+            if (durationMinutes == null) {
+                Object durationSecondsObj = getField.apply("durationSeconds");
+                if (durationSecondsObj instanceof Number) {
+                    durationMinutes = ((Number) durationSecondsObj).floatValue() / 60.0f;
+                } else if (durationSecondsObj instanceof String) {
+                    try {
+                        durationMinutes = Float.parseFloat((String) durationSecondsObj) / 60.0f;
+                    } catch (NumberFormatException e) {
+                        log.debug("Could not parse durationSeconds as float: {}", durationSecondsObj);
+                    }
+                }
+            }
+
+            // ---- startTime/endTime ----
+            LocalDateTime startTime = null, endTime = null;
+            if (callInfo != null && callInfo.get("startTime") != null)
+                startTime = parseTimestamp(callInfo.get("startTime").toString());
+            if (callInfo != null && callInfo.get("endTime") != null)
+                endTime = parseTimestamp(callInfo.get("endTime").toString());
+            builder.startTime(startTime);
+            builder.endTime(endTime);
+
+            // If durationMinutes is still not found and we have start/end times, calculate it
+            if (durationMinutes == null && startTime != null && endTime != null) {
+                long seconds = java.time.Duration.between(startTime, endTime).getSeconds();
+                durationMinutes = seconds / 60.0f;
+            }
+
+            // Set duration field
+            builder.duration(durationMinutes != null ? durationMinutes.intValue() : null);
 
             // ---- transcript ----
             String transcript = (String) rootMap.get("transcript");
@@ -154,19 +219,9 @@ public class VapiWebhookMapper {
 
             // ---- status ----
             String status = null;
-            Map<String, Object> callMap = (Map<String, Object>) getField.apply("call");
-            if (callMap != null && callMap.get("status") != null)
-                status = callMap.get("status").toString();
+            if (callInfo != null && callInfo.get("status") != null)
+                status = callInfo.get("status").toString();
             builder.status(status);
-
-            // ---- startTime/endTime ----
-            LocalDateTime startTime = null, endTime = null;
-            if (callMap != null && callMap.get("startTime") != null)
-                startTime = parseTimestamp(callMap.get("startTime").toString());
-            if (callMap != null && callMap.get("endTime") != null)
-                endTime = parseTimestamp(callMap.get("endTime").toString());
-            builder.startTime(startTime);
-            builder.endTime(endTime);
 
             // ---- messages ----
             List<VapiCallLogDTO.MessageDTO> messages = new ArrayList<>();
@@ -306,6 +361,8 @@ public class VapiWebhookMapper {
                 .rawPayload(trimRawPayload(callLog.getRawPayload()))
                 .conversationData(conversationData)
                 .status(logStatus)
+                .phoneNumber(callLog.getPhoneNumber())
+                .durationMinutes(callLog.getDuration() != null ? callLog.getDuration().floatValue() : null)
                 .build();
     }
 

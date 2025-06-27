@@ -34,6 +34,12 @@ public class VoiceLog {
     @Column(nullable = false)
     private String provider;
 
+    @Column(name = "phone_number")
+    private String phoneNumber;
+
+    @Column(name = "duration_minutes")
+    private Float durationMinutes;
+
     @Column(name = "external_agent_id")
     private String externalAgentId;
 
@@ -83,10 +89,23 @@ public class VoiceLog {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    // Calculated field
+    // Calculated field for duration in seconds
     public Integer getDuration() {
         if (startedAt != null && endedAt != null) {
             return (int) java.time.Duration.between(startedAt, endedAt).getSeconds();
+        }
+        return null;
+    }
+
+    // Calculated field for duration in minutes if not already set
+    public Float getDurationMinutes() {
+        if (durationMinutes != null) {
+            return durationMinutes;
+        }
+
+        if (startedAt != null && endedAt != null) {
+            long seconds = java.time.Duration.between(startedAt, endedAt).getSeconds();
+            return seconds / 60.0f;
         }
         return null;
     }

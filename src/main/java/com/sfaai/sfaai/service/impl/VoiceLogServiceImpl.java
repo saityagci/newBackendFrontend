@@ -167,6 +167,23 @@ public class VoiceLogServiceImpl implements VoiceLogService {
             }
         }
 
+        // Update phone number if provided and we don't have one yet
+        if (dto.getPhoneNumber() != null && !dto.getPhoneNumber().isEmpty()) {
+            if (existingLog.getPhoneNumber() == null || existingLog.getPhoneNumber().isEmpty()) {
+                existingLog.setPhoneNumber(dto.getPhoneNumber());
+            }
+        }
+
+        // Update duration minutes if provided or can be calculated
+        if (dto.getDurationMinutes() != null) {
+            existingLog.setDurationMinutes(dto.getDurationMinutes());
+        } else if (existingLog.getDurationMinutes() == null && 
+                  existingLog.getStartedAt() != null && existingLog.getEndedAt() != null) {
+            // Calculate duration if not provided but we have start and end times
+            long seconds = java.time.Duration.between(existingLog.getStartedAt(), existingLog.getEndedAt()).getSeconds();
+            existingLog.setDurationMinutes(seconds / 60.0f);
+        }
+
         // Update conversation data if provided and it's more complete than what we have
         if (dto.getConversationData() != null && !dto.getConversationData().isEmpty()) {
             if (existingLog.getConversationData() == null || existingLog.getConversationData().isEmpty() ||

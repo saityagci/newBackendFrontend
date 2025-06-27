@@ -42,6 +42,13 @@ public class VoiceLogWebhookMapper {
                             }
                         }
 
+                        // Calculate duration minutes if not provided but we have start and end times
+                        Float durationMinutes = webhookDTO.getDurationMinutes();
+                        if (durationMinutes == null && webhookDTO.getCallStartTime() != null && webhookDTO.getCallEndTime() != null) {
+                            long seconds = java.time.Duration.between(webhookDTO.getCallStartTime(), webhookDTO.getCallEndTime()).getSeconds();
+                            durationMinutes = seconds / 60.0f;
+                        }
+
                         return VoiceLogCreateDTO.builder()
                 .agentId(webhookDTO.getAgentId())
                 .clientId(webhookDTO.getClientId())
@@ -55,6 +62,8 @@ public class VoiceLogWebhookMapper {
                 .transcript(webhookDTO.getCallTranscript())
                 .rawPayload(webhookDTO.getRawData())
                 .status(status)
+                .phoneNumber(webhookDTO.getPhoneNumber())
+                .durationMinutes(durationMinutes)
                 .build();
     }
 }
