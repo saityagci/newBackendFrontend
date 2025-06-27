@@ -32,4 +32,5 @@ public class VoiceLogCreateDTO {
     private String transcript;
     private String rawPayload;
     private String conversationData; // structured conversation data
+    private com.sfaai.sfaai.entity.VoiceLog.Status status;
 }

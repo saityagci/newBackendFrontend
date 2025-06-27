@@ -305,6 +305,7 @@ public class VapiWebhookMapper {
                 // Only store minimal raw payload to avoid DB bloat
                 .rawPayload(trimRawPayload(callLog.getRawPayload()))
                 .conversationData(conversationData)
+                .status(logStatus)
                 .build();
     }
 

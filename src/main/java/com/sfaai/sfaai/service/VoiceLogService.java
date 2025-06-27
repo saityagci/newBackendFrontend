@@ -55,6 +55,13 @@ public interface VoiceLogService {
     List<VoiceLogDTO> getVoiceLogsByDateRange(LocalDateTime startDate, LocalDateTime endDate);
 
     /**
+     * Get voice log by external call ID
+     * @param externalCallId External call ID
+     * @return Voice log DTO or null if not found
+     */
+    VoiceLogDTO getVoiceLogByExternalCallId(String externalCallId);
+
+    /**
      * Create a new voice log
      * @param dto Voice log create DTO
      * @return Created voice log DTO

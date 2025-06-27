@@ -218,17 +218,40 @@ public class VapiWebhookController {
             // Convert to VoiceLogCreateDTO
             VoiceLogCreateDTO createDTO = webhookMapper.toVoiceLogCreateDTO(callLog, client.getId(), agentId);
 
-            // Save to database
-            VoiceLogDTO savedLog = voiceLogService.createVoiceLog(createDTO);
-            log.info("Successfully saved voice log with ID: {}", savedLog.getId());
+            // Check if this is a new record or an update to an existing one
+            VoiceLogDTO existingLog = null;
+            if (callLog.getCallId() != null) {
+                existingLog = voiceLogService.getVoiceLogByExternalCallId(callLog.getCallId());
+            }
 
-            // Return success response
+            // Save to database (createVoiceLog will handle both creation and updates)
+            VoiceLogDTO savedLog = voiceLogService.createVoiceLog(createDTO);
+
+            // Return appropriate status code and response based on whether this was an update or creation
+            HttpStatus status;
+            String message;
+
+            if (existingLog != null) {
+                log.info("Updated existing voice log with ID: {} for external call ID: {}", 
+                         savedLog.getId(), callLog.getCallId());
+                status = HttpStatus.OK;
+                message = "Webhook processed successfully (updated existing record)";
+            } else {
+                log.info("Created new voice log with ID: {} for external call ID: {}", 
+                         savedLog.getId(), callLog.getCallId());
+                status = HttpStatus.CREATED;
+                message = "Webhook processed successfully (created new record)";
+            }
+
+            // Build the response
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("message", "Webhook processed successfully");
+            response.put("message", message);
             response.put("voiceLogId", savedLog.getId());
+            response.put("externalCallId", callLog.getCallId());
+            response.put("isUpdate", existingLog != null);
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            return ResponseEntity.status(status).body(response);
 
         } catch (Exception e) {
             log.error("Error processing Vapi webhook", e);

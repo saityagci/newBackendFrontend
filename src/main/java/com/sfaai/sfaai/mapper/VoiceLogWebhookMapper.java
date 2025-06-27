@@ -19,17 +19,42 @@ public class VoiceLogWebhookMapper {
             return null;
         }
 
-        return VoiceLogCreateDTO.builder()
+                        // Map status if available
+                        com.sfaai.sfaai.entity.VoiceLog.Status status = null;
+                        if (webhookDTO.getCallStatus() != null) {
+                            try {
+                String callStatus = webhookDTO.getCallStatus().toUpperCase();
+                if (callStatus.contains("COMPLET")) {
+                    status = com.sfaai.sfaai.entity.VoiceLog.Status.COMPLETED;
+                } else if (callStatus.contains("FAIL") || callStatus.contains("ERROR")) {
+                    status = com.sfaai.sfaai.entity.VoiceLog.Status.FAILED;
+                } else if (callStatus.contains("PROGRESS") || callStatus.contains("ACTIVE")) {
+                    status = com.sfaai.sfaai.entity.VoiceLog.Status.IN_PROGRESS;
+                } else if (callStatus.contains("RING")) {
+                    status = com.sfaai.sfaai.entity.VoiceLog.Status.RINGING;
+                } else if (callStatus.contains("CANCEL")) {
+                    status = com.sfaai.sfaai.entity.VoiceLog.Status.CANCELLED;
+                } else if (callStatus.contains("INIT")) {
+                    status = com.sfaai.sfaai.entity.VoiceLog.Status.INITIATED;
+                }
+                            } catch (Exception e) {
+                // Ignore mapping errors
+                            }
+                        }
+
+                        return VoiceLogCreateDTO.builder()
                 .agentId(webhookDTO.getAgentId())
                 .clientId(webhookDTO.getClientId())
                 .provider(webhookDTO.getProvider())
                 .externalCallId(webhookDTO.getCallId())
                 .externalAgentId(webhookDTO.getAgentExternalId())
+                .assistantId(webhookDTO.getAgentExternalId()) // Set assistantId to be the same as externalAgentId
                 .startedAt(webhookDTO.getCallStartTime())
                 .endedAt(webhookDTO.getCallEndTime())
                 .audioUrl(webhookDTO.getRecordingUrl())
                 .transcript(webhookDTO.getCallTranscript())
                 .rawPayload(webhookDTO.getRawData())
+                .status(status)
                 .build();
     }
 }
