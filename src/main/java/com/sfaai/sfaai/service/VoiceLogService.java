@@ -62,11 +62,23 @@ public interface VoiceLogService {
     VoiceLogDTO getVoiceLogByExternalCallId(String externalCallId);
 
     /**
-     * Create a new voice log
+     * Create a new voice log or update an existing one if it has the same externalCallId
+     * Important fields that should be included in the DTO:
+     * - audioUrl: URL to the audio recording
+     * - durationMinutes: Call duration in minutes
+     * - startedAt: Call start time
+     * - endedAt: Call end time
+     * 
      * @param dto Voice log create DTO
-     * @return Created voice log DTO
+     * @return Created or updated voice log DTO
      */
     VoiceLogDTO createVoiceLog(VoiceLogCreateDTO dto);
+
+    /**
+     * Alias for createVoiceLog - provides the same functionality
+     * @param dto Voice log create DTO
+     * @return Created or updated voice log DTO
+     */
     VoiceLogDTO save(VoiceLogCreateDTO dto);
     /**
      * Update voice log status

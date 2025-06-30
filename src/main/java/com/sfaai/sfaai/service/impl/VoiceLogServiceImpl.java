@@ -116,35 +116,50 @@ public class VoiceLogServiceImpl implements VoiceLogService {
 
     /**
      * Update an existing voice log with new data from a webhook
-     * The update only proceeds if the incoming webhook contains a non-empty transcript
-     * When updating, all new values are copied from the payload
-     *
+     * Ensures all required fields (audioUrl, durationMinutes, startedAt, endedAt) are updated
+     * 
      * @param existingLog The existing voice log entity
      * @param dto The new data from the webhook
      * @return Updated voice log DTO
      */
     @Transactional
     protected VoiceLogDTO updateVoiceLog(VoiceLog existingLog, VoiceLogCreateDTO dto) {
-        // This method will only be called if the transcript is not null and not empty
-        // (that check is performed in the createVoiceLog method)
-        log.debug("Updating voice log ID {} with new data from webhook. Transcript length: {}", 
-                existingLog.getId(), dto.getTranscript() != null ? dto.getTranscript().length() : 0);
+        // Log the current state of the critical fields
+        log.info("Updating voice log ID {} with new data. Current values - audioUrl: {}, durationMinutes: {}, startedAt: {}, endedAt: {}", 
+                existingLog.getId(), 
+                existingLog.getAudioUrl() != null ? "present" : "missing",
+                existingLog.getDurationMinutes(),
+                existingLog.getStartedAt(),
+                existingLog.getEndedAt());
+
+        log.info("New values from webhook - audioUrl: {}, durationMinutes: {}, startedAt: {}, endedAt: {}",
+                dto.getAudioUrl() != null ? "present" : "missing",
+                dto.getDurationMinutes(),
+                dto.getStartedAt(),
+                dto.getEndedAt());
 
         // Update all fields with the new values from the DTO
 
         // Update status
         if (dto.getStatus() != null) {
+            log.debug("Updating status from {} to {}", existingLog.getStatus(), dto.getStatus());
             existingLog.setStatus(dto.getStatus());
-        } else if (dto.getEndedAt() != null && existingLog.getStatus() == VoiceLog.Status.INITIATED) {
-            // If status is not provided,  we have an end time, we can infer that the call is completed
+        } else if (dto.getEndedAt() != null && 
+                  (existingLog.getStatus() == VoiceLog.Status.INITIATED || 
+                   existingLog.getStatus() == VoiceLog.Status.IN_PROGRESS || 
+                   existingLog.getStatus() == VoiceLog.Status.RINGING)) {
+            // If we have an end time and the call is not in a terminal state, mark it as completed
+            log.debug("Call has ended, updating status from {} to COMPLETED", existingLog.getStatus());
             existingLog.setStatus(VoiceLog.Status.COMPLETED);
         }
 
         // Update timestamps if provided (never overwrite existing timestamps with null)
         if (dto.getStartedAt() != null) {
+            log.debug("Updating startedAt from {} to {}", existingLog.getStartedAt(), dto.getStartedAt());
             existingLog.setStartedAt(dto.getStartedAt());
         }
         if (dto.getEndedAt() != null) {
+            log.debug("Updating endedAt from {} to {}", existingLog.getEndedAt(), dto.getEndedAt());
             existingLog.setEndedAt(dto.getEndedAt());
         }
 
@@ -153,41 +168,90 @@ public class VoiceLogServiceImpl implements VoiceLogService {
         if (dto.getTranscript() != null && !dto.getTranscript().isEmpty()) {
             if (existingLog.getTranscript() == null || existingLog.getTranscript().isEmpty() ||
                 dto.getTranscript().length() > existingLog.getTranscript().length()) {
+                log.debug("Updating transcript (old length: {}, new length: {})", 
+                        existingLog.getTranscript() != null ? existingLog.getTranscript().length() : 0, 
+                        dto.getTranscript().length());
                 existingLog.setTranscript(dto.getTranscript());
             }
         }
 
-        // Update audio URL if provided and we don't have one yet or if the new one is better
+        // Update audio URL - ALWAYS check if the incoming webhook has a better URL
         if (dto.getAudioUrl() != null && !dto.getAudioUrl().isEmpty()) {
-            if (existingLog.getAudioUrl() == null || existingLog.getAudioUrl().isEmpty() ||
-                (!existingLog.getAudioUrl().equals(dto.getAudioUrl()) && 
-                 // Prefer URLs with "recording" or "audio" in them as they're likely the actual recordings
-                 (dto.getAudioUrl().contains("recording") || dto.getAudioUrl().contains("audio")))) {
+            boolean shouldUpdate = false;
+
+            // If we don't have an audio URL yet, always update
+            if (existingLog.getAudioUrl() == null || existingLog.getAudioUrl().isEmpty()) {
+                shouldUpdate = true;
+                log.debug("No existing audioUrl, using new one: {}", dto.getAudioUrl());
+            } 
+            // If the new URL is different and seems to be a recording URL, update
+            else if (!existingLog.getAudioUrl().equals(dto.getAudioUrl())) {
+                // Prefer URLs with "recording" or "audio" or file extensions in them
+                boolean newUrlLooksLikeRecording = dto.getAudioUrl().contains("recording") || 
+                                                 dto.getAudioUrl().contains("audio") ||
+                                                 dto.getAudioUrl().endsWith(".mp3") ||
+                                                 dto.getAudioUrl().endsWith(".wav") ||
+                                                 dto.getAudioUrl().endsWith(".m4a");
+
+                if (newUrlLooksLikeRecording) {
+                    shouldUpdate = true;
+                    log.debug("Found better audioUrl, updating from {} to {}", existingLog.getAudioUrl(), dto.getAudioUrl());
+                }
+            }
+
+            if (shouldUpdate) {
                 existingLog.setAudioUrl(dto.getAudioUrl());
+                log.info("Updated audioUrl to: {}", dto.getAudioUrl());
+            }
+        } else {
+            // Special case: If we don't have an audioUrl in the dto but we have raw payload data,
+            // attempt to extract the URL directly here as a last resort
+            if ((existingLog.getAudioUrl() == null || existingLog.getAudioUrl().isEmpty()) && 
+                dto.getRawPayload() != null && !dto.getRawPayload().isEmpty()) {
+
+                log.info("No audioUrl in the dto, attempting to extract from raw payload");
+                String rawData = dto.getRawPayload();
+
+                // Use our specialized utility class to extract the URL
+                String extractedUrl = com.sfaai.sfaai.util.AudioUrlExtractor.extractFromJson(rawData);
+                if (extractedUrl != null && !extractedUrl.isEmpty()) {
+                    log.info("Successfully extracted audioUrl from raw payload: {}", extractedUrl);
+                    existingLog.setAudioUrl(extractedUrl);
+                } else {
+                    log.warn("Could not extract audioUrl from raw payload");
+                }
             }
         }
 
         // Update phone number if provided and we don't have one yet
         if (dto.getPhoneNumber() != null && !dto.getPhoneNumber().isEmpty()) {
             if (existingLog.getPhoneNumber() == null || existingLog.getPhoneNumber().isEmpty()) {
+                log.debug("Setting phoneNumber to: {}", dto.getPhoneNumber());
                 existingLog.setPhoneNumber(dto.getPhoneNumber());
             }
         }
 
         // Update duration minutes if provided or can be calculated
         if (dto.getDurationMinutes() != null) {
+            log.debug("Updating durationMinutes from {} to {}", existingLog.getDurationMinutes(), dto.getDurationMinutes());
             existingLog.setDurationMinutes(dto.getDurationMinutes());
-        } else if (existingLog.getDurationMinutes() == null && 
-                  existingLog.getStartedAt() != null && existingLog.getEndedAt() != null) {
-            // Calculate duration if not provided but we have start and end times
+        } 
+        // Calculate or recalculate duration if we have start and end times
+        else if (existingLog.getStartedAt() != null && existingLog.getEndedAt() != null) {
+            // Recalculate even if we already have a value, as the timestamps might have been updated
             long seconds = java.time.Duration.between(existingLog.getStartedAt(), existingLog.getEndedAt()).getSeconds();
-            existingLog.setDurationMinutes(seconds / 60.0f);
+            float minutes = seconds / 60.0f;
+            log.debug("Calculated durationMinutes from timestamps: {} (was: {})", minutes, existingLog.getDurationMinutes());
+            existingLog.setDurationMinutes(minutes);
         }
 
         // Update conversation data if provided and it's more complete than what we have
         if (dto.getConversationData() != null && !dto.getConversationData().isEmpty()) {
             if (existingLog.getConversationData() == null || existingLog.getConversationData().isEmpty() ||
                 dto.getConversationData().length() > existingLog.getConversationData().length()) {
+                log.debug("Updating conversationData (old length: {}, new length: {})",
+                        existingLog.getConversationData() != null ? existingLog.getConversationData().length() : 0,
+                        dto.getConversationData().length());
                 existingLog.setConversationData(dto.getConversationData());
             }
         }
@@ -204,15 +268,15 @@ public class VoiceLogServiceImpl implements VoiceLogService {
     }
 
     /**
-     * Create or update a voice log using an idempotent pattern with transcript-aware updating
+     * Create or update a voice log using an idempotent pattern
      * 
      * Logic:
      * 1. If a log with the same externalCallId exists:
-     *    a. If the incoming webhook has a transcript: Update the existing log with all new values
-     *    b. If the incoming webhook has NO transcript: Do nothing (skip the update)
-     * 2. If no log exists yet: Create a new log using all provided values (even if transcript is empty)
+     *    a. If the incoming webhook has required field updates (audioUrl, timestamps, etc.): Update the existing log
+     *    b. Otherwise, check if it has a transcript before updating
+     * 2. If no log exists yet: Create a new log using all provided values
      * 
-     * This ensures we have one row per externalCallId and only update when meaningful content is available.
+     * This ensures we have one row per externalCallId and fields are properly updated.
      * 
      * @param dto Voice log create DTO
      * @return Created or updated voice log DTO
@@ -225,6 +289,14 @@ public class VoiceLogServiceImpl implements VoiceLogService {
             return createNewVoiceLog(dto);
         }
 
+        // Log incoming important fields
+        log.info("Processing voice log create/update request for externalCallId: {}, audioUrl: {}, startedAt: {}, endedAt: {}, durationMinutes: {}",
+                dto.getExternalCallId(),
+                dto.getAudioUrl() != null ? "present" : "missing",
+                dto.getStartedAt(),
+                dto.getEndedAt(),
+                dto.getDurationMinutes());
+
         // Use a synchronized block with the external call ID as the lock object to prevent race conditions
         // when multiple webhooks for the same call arrive simultaneously
         String externalCallId = dto.getExternalCallId().trim();
@@ -236,15 +308,49 @@ public class VoiceLogServiceImpl implements VoiceLogService {
                 VoiceLog existingLog = existingLogOpt.get();
                 log.info("Found existing voice log ID {} for external call ID {}", existingLog.getId(), externalCallId);
 
-                // First webhook created the log, subsequent webhooks should only update if they have a transcript
-                if (dto.getTranscript() == null || dto.getTranscript().isEmpty()) {
-                    log.info("Skipping update for external call ID {} as the webhook has no transcript", externalCallId);
-                    // Skip updating if no transcript is provided in this webhook
+                // Determine if this update has important data we should capture regardless of transcript
+                boolean hasImportantUpdates = false;
+
+                // Check if incoming webhook has any critical field updates that should be applied
+                if (dto.getAudioUrl() != null && !dto.getAudioUrl().isEmpty() && 
+                    (existingLog.getAudioUrl() == null || existingLog.getAudioUrl().isEmpty())) {
+                    log.info("Webhook contains audioUrl which is missing in existing record");
+                    hasImportantUpdates = true;
+                }
+
+                if (dto.getDurationMinutes() != null && existingLog.getDurationMinutes() == null) {
+                    log.info("Webhook contains durationMinutes which is missing in existing record");
+                    hasImportantUpdates = true;
+                }
+
+                if (dto.getStartedAt() != null && existingLog.getStartedAt() == null) {
+                    log.info("Webhook contains startedAt which is missing in existing record");
+                    hasImportantUpdates = true;
+                }
+
+                if (dto.getEndedAt() != null && existingLog.getEndedAt() == null) {
+                    log.info("Webhook contains endedAt which is missing in existing record");
+                    hasImportantUpdates = true;
+                }
+
+                // Check if status should be updated (e.g., call is now completed)
+                if (dto.getStatus() != null && existingLog.getStatus() != dto.getStatus() && 
+                    (existingLog.getStatus() == VoiceLog.Status.INITIATED || 
+                     existingLog.getStatus() == VoiceLog.Status.IN_PROGRESS || 
+                     existingLog.getStatus() == VoiceLog.Status.RINGING)) {
+                    log.info("Webhook contains updated status: {} (current: {})", dto.getStatus(), existingLog.getStatus());
+                    hasImportantUpdates = true;
+                }
+
+                // First webhook created the log, subsequent webhooks should update if they have important data or a transcript
+                if (!hasImportantUpdates && (dto.getTranscript() == null || dto.getTranscript().isEmpty())) {
+                    log.info("Skipping update for external call ID {} as webhook has no important updates or transcript", externalCallId);
+                    // Skip updating if no important data or transcript is provided in this webhook
                     return voiceLogMapper.toDto(existingLog);
                 }
 
-                log.info("Updating existing voice log ID {} with new transcript", existingLog.getId());
-                // Update the existing log only if transcript is present
+                log.info("Updating existing voice log ID {} with new data", existingLog.getId());
+                // Update the existing log
                 return updateVoiceLog(existingLog, dto);
             } else {
                 log.info("No existing voice log found for external call ID {}, creating new record", externalCallId);

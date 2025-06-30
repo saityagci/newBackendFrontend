@@ -150,11 +150,37 @@ public class VapiWebhookMapper {
             if (audioUrl == null || audioUrl.isEmpty()) {
                 audioUrl = (String) rootMap.get("recordingUrl");
             }
-            // Try to get the recording URL from the call map
+            // Try the call object for recording URL
             Map<String, Object> callInfo = (Map<String, Object>) getField.apply("call");
             if (audioUrl == null || audioUrl.isEmpty() && callInfo != null) {
                 audioUrl = (String) callInfo.get("recordingUrl");
             }
+            // Try artifact at root level
+            if (audioUrl == null || audioUrl.isEmpty()) {
+                Map<String, Object> artifact = (Map<String, Object>) rootMap.get("artifact");
+                if (artifact != null) {
+                    if (artifact.get("recording_url") != null) {
+                        audioUrl = artifact.get("recording_url").toString();
+                    } else if (artifact.get("recordingUrl") != null) {
+                        audioUrl = artifact.get("recordingUrl").toString();
+                    } else if (artifact.get("audio_url") != null) {
+                        audioUrl = artifact.get("audio_url").toString();
+                    } else if (artifact.get("audioUrl") != null) {
+                        audioUrl = artifact.get("audioUrl").toString();
+                    }
+                }
+            }
+            // Try recording directly in root
+            if (audioUrl == null || audioUrl.isEmpty()) {
+                if (rootMap.get("recording") instanceof Map) {
+                    Map<String, Object> recording = (Map<String, Object>) rootMap.get("recording");
+                    if (recording.get("url") != null) {
+                        audioUrl = recording.get("url").toString();
+                    }
+                }
+            }
+
+            log.debug("Extracted audioUrl: {}", audioUrl != null ? audioUrl : "<none>");
             builder.audioUrl(audioUrl);
 
             // ---- durationMinutes ----
@@ -185,12 +211,124 @@ public class VapiWebhookMapper {
                 }
             }
 
+            // Try duration field (which could be in seconds)
+            if (durationMinutes == null) {
+                Object duration = getField.apply("duration");
+                if (duration instanceof Number) {
+                    // Assume it's in seconds if greater than 500 (no call is 500 minutes)
+                    double value = ((Number) duration).doubleValue();
+                    if (value > 500) {
+                        durationMinutes = (float) (value / 60.0);
+                    } else {
+                        durationMinutes = (float) value;
+                    }
+                } else if (duration instanceof String) {
+                    try {
+                        double value = Double.parseDouble((String) duration);
+                        if (value > 500) {
+                            durationMinutes = (float) (value / 60.0);
+                        } else {
+                            durationMinutes = (float) value;
+                        }
+                    } catch (NumberFormatException e) {
+                        log.debug("Could not parse duration as float: {}", duration);
+                    }
+                }
+            }
+
+            // Try to extract from artifact
+            if (durationMinutes == null) {
+                Map<String, Object> artifact = (Map<String, Object>) getField.apply("artifact");
+                if (artifact != null) {
+                    Object artifactDuration = artifact.get("durationMinutes");
+                    if (artifactDuration == null) artifactDuration = artifact.get("duration_minutes");
+                    if (artifactDuration == null) artifactDuration = artifact.get("duration");
+
+                    if (artifactDuration instanceof Number) {
+                        double value = ((Number) artifactDuration).doubleValue();
+                        // If it's larger than 500, assume it's in seconds
+                        if (value > 500) {
+                            durationMinutes = (float) (value / 60.0);
+                        } else {
+                            durationMinutes = (float) value;
+                        }
+                    } else if (artifactDuration instanceof String) {
+                        try {
+                            double value = Double.parseDouble((String) artifactDuration);
+                            if (value > 500) {
+                                durationMinutes = (float) (value / 60.0);
+                            } else {
+                                durationMinutes = (float) value;
+                            }
+                        } catch (NumberFormatException e) {
+                            log.debug("Could not parse artifact duration as float: {}", artifactDuration);
+                        }
+                    }
+                }
+            }
+
             // ---- startTime/endTime ----
             LocalDateTime startTime = null, endTime = null;
-            if (callInfo != null && callInfo.get("startTime") != null)
-                startTime = parseTimestamp(callInfo.get("startTime").toString());
-            if (callInfo != null && callInfo.get("endTime") != null)
-                endTime = parseTimestamp(callInfo.get("endTime").toString());
+
+            // Check call object first
+            if (callInfo != null) {
+                if (callInfo.get("startTime") != null) {
+                    startTime = parseTimestamp(callInfo.get("startTime").toString());
+                } else if (callInfo.get("start_time") != null) {
+                    startTime = parseTimestamp(callInfo.get("start_time").toString());
+                }
+
+                if (callInfo.get("endTime") != null) {
+                    endTime = parseTimestamp(callInfo.get("endTime").toString());
+                } else if (callInfo.get("end_time") != null) {
+                    endTime = parseTimestamp(callInfo.get("end_time").toString());
+                }
+            }
+
+            // Try root level fields if not found in call object
+            if (startTime == null) {
+                Object startTimeObj = getField.apply("startTime");
+                if (startTimeObj == null) startTimeObj = getField.apply("start_time");
+                if (startTimeObj == null) startTimeObj = getField.apply("startedAt");
+                if (startTimeObj == null) startTimeObj = getField.apply("started_at");
+                if (startTimeObj != null) {
+                    startTime = parseTimestamp(startTimeObj.toString());
+                }
+            }
+
+            if (endTime == null) {
+                Object endTimeObj = getField.apply("endTime");
+                if (endTimeObj == null) endTimeObj = getField.apply("end_time");
+                if (endTimeObj == null) endTimeObj = getField.apply("endedAt");
+                if (endTimeObj == null) endTimeObj = getField.apply("ended_at");
+                if (endTimeObj != null) {
+                    endTime = parseTimestamp(endTimeObj.toString());
+                }
+            }
+
+            // Check artifact if we still don't have times
+            if (startTime == null || endTime == null) {
+                Map<String, Object> artifact = (Map<String, Object>) getField.apply("artifact");
+                if (artifact != null) {
+                    if (startTime == null) {
+                        Object artStartTime = artifact.get("startTime");
+                        if (artStartTime == null) artStartTime = artifact.get("start_time");
+                        if (artStartTime != null) {
+                            startTime = parseTimestamp(artStartTime.toString());
+                        }
+                    }
+
+                    if (endTime == null) {
+                        Object artEndTime = artifact.get("endTime");
+                        if (artEndTime == null) artEndTime = artifact.get("end_time");
+                        if (artEndTime != null) {
+                            endTime = parseTimestamp(artEndTime.toString());
+                        }
+                    }
+                }
+            }
+
+            log.debug("Extracted startTime: {}, endTime: {}", startTime, endTime);
             builder.startTime(startTime);
             builder.endTime(endTime);
 
@@ -202,6 +340,8 @@ public class VapiWebhookMapper {
 
             // Set duration field
             builder.duration(durationMinutes != null ? durationMinutes.intValue() : null);
+            // Also set durationMinutes for direct mapping
+            builder.durationMinutes(durationMinutes);
 
             // ---- transcript ----
             String transcript = (String) rootMap.get("transcript");
@@ -346,6 +486,24 @@ public class VapiWebhookMapper {
         }
 
         // Build the voice log create DTO with null checks
+
+        // Use the explicit durationMinutes if available, otherwise fall back to calculated from duration
+        Float finalDurationMinutes = callLog.getDurationMinutes();
+        if (finalDurationMinutes == null && callLog.getDuration() != null) {
+            finalDurationMinutes = callLog.getDuration().floatValue() / 60.0f;
+        }
+
+        // If we have startTime and endTime but no duration, calculate it
+        if (finalDurationMinutes == null && callLog.getStartTime() != null && callLog.getEndTime() != null) {
+            long seconds = java.time.Duration.between(callLog.getStartTime(), callLog.getEndTime()).getSeconds();
+            finalDurationMinutes = seconds / 60.0f;
+        }
+
+        log.debug("Mapping to VoiceLogCreateDTO - startedAt: {}, endedAt: {}, audioUrl: {}, durationMinutes: {}",
+                callLog.getStartTime(), callLog.getEndTime(), 
+                callLog.getAudioUrl() != null ? "present" : "null", 
+                finalDurationMinutes);
+
         return VoiceLogCreateDTO.builder()
                 .clientId(clientId)
                 .agentId(agentId)
@@ -362,7 +520,7 @@ public class VapiWebhookMapper {
                 .conversationData(conversationData)
                 .status(logStatus)
                 .phoneNumber(callLog.getPhoneNumber())
-                .durationMinutes(callLog.getDuration() != null ? callLog.getDuration().floatValue() : null)
+                .durationMinutes(finalDurationMinutes)
                 .build();
     }
 

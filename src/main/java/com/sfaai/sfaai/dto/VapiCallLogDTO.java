@@ -28,6 +28,7 @@ public class VapiCallLogDTO {
     private String audioUrl;
     private String transcriptText;
     private Integer duration; // Duration in seconds
+    private Float durationMinutes; // Duration in minutes
     private String phoneNumber; // Caller's phone number if available
     private String callerId; // Caller ID if available
     private Boolean isInbound; // Whether the call was inbound or outbound

@@ -205,7 +205,7 @@ public class VapiWebhookController {
                     String publicUrl = audioStorageService.getPublicUrl(storedPath);
 
                     // Update the URL in the call log
-                    if (publicUrl != null) {
+                    if (publicUrl != null && !publicUrl.isEmpty()) {
                         log.info("Updated audio URL from {} to {}", audioUrl, publicUrl);
                         callLog.setAudioUrl(publicUrl);
                     }
@@ -213,6 +213,9 @@ public class VapiWebhookController {
                     log.error("Failed to process audio URL: {}", audioUrl, e);
                     // Continue with the original URL
                 }
+            } else {
+                log.warn("No audio URL found in call log with ID: {}", callLog.getCallId());
+                // We could attempt to extract from other parts of the payload here if needed
             }
 
             // Convert to VoiceLogCreateDTO

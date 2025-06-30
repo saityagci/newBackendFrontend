@@ -5,6 +5,7 @@ import com.sfaai.sfaai.dto.VoiceLogDTO;
 import com.sfaai.sfaai.dto.VoiceLogWebhookDTO;
 import com.sfaai.sfaai.exception.WebhookException;
 import com.sfaai.sfaai.mapper.VoiceLogWebhookMapper;
+import com.sfaai.sfaai.service.AudioStorageService;
 import com.sfaai.sfaai.service.VoiceLogService;
 import com.sfaai.sfaai.util.WebhookSignatureVerifier;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 public class VoiceLogController {
     private final VoiceLogService voiceLogService;
     private final WebhookSignatureVerifier signatureVerifier;
+    private final AudioStorageService audioStorageService;
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('CLIENT')")
@@ -96,6 +98,27 @@ public class VoiceLogController {
 
             // Convert webhook to create DTO and save/update using the idempotent pattern
             VoiceLogCreateDTO dto = VoiceLogWebhookMapper.toCreateDTO(payload);
+
+            // If there's an audio URL, we could process it here (download, store locally, etc.)
+            // Similar to what we do in VapiWebhookController
+            if (dto.getAudioUrl() != null && !dto.getAudioUrl().isEmpty()) {
+                try {
+                    // This would need to be autowired in the controller
+                    // Uncomment if AudioStorageService is available in this controller
+
+                    String storedPath = audioStorageService.storeAudioFromUrl(dto.getAudioUrl(), payload.getCallId());
+                    String publicUrl = audioStorageService.getPublicUrl(storedPath);
+                    if (publicUrl != null && !publicUrl.isEmpty()) {
+                        log.info("Updated audio URL from {} to {}", dto.getAudioUrl(), publicUrl);
+                        dto.setAudioUrl(publicUrl);
+                    }
+
+                } catch (Exception e) {
+                    log.error("Failed to process audio URL: {}", dto.getAudioUrl(), e);
+                    // Continue with the original URL
+                }
+            }
+
             VoiceLogDTO saved = voiceLogService.createVoiceLog(dto);
 
             // Return appropriate status code and response based on whether this was an update or creation

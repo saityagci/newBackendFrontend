@@ -88,6 +88,16 @@ public class VoiceLogMapper implements EntityMapper<VoiceLogDTO, VoiceLog> {
             return null;
         }
 
+        // Use specified status or default to INITIATED
+        VoiceLog.Status status = dto.getStatus() != null ? dto.getStatus() : VoiceLog.Status.INITIATED;
+
+        // Calculate duration minutes if not provided but we have start and end times
+        Float durationMinutes = dto.getDurationMinutes();
+        if (durationMinutes == null && dto.getStartedAt() != null && dto.getEndedAt() != null) {
+            long seconds = java.time.Duration.between(dto.getStartedAt(), dto.getEndedAt()).getSeconds();
+            durationMinutes = seconds / 60.0f;
+        }
+
         VoiceLog voiceLog = VoiceLog.builder()
                 .externalCallId(dto.getExternalCallId())
                 .provider(dto.getProvider())
@@ -98,8 +108,9 @@ public class VoiceLogMapper implements EntityMapper<VoiceLogDTO, VoiceLog> {
                 .transcript(dto.getTranscript())
                 .rawPayload(dto.getRawPayload())
                 .conversationData(dto.getConversationData())
-                .status(VoiceLog.Status.INITIATED) // Default status
-                .build();
+                .status(status)
+                .phoneNumber(dto.getPhoneNumber())
+                .durationMinutes(durationMinutes).build();
 
         if (dto.getClientId() != null) {
             Client client = clientRepository.findById(dto.getClientId())
