@@ -29,8 +29,11 @@ public class AudioStorageServiceImpl implements AudioStorageService {
     @Value("${audio.storage.dir:uploads/audio}")
     private String audioStorageDir;
 
-    @Value("${audio.storage.public-url-base:}")
-    private String publicUrlBase;
+    @Value("${audio.base-url:http://localhost:8880}")
+    private String baseUrl;
+
+    @Value("${server.servlet.context-path:}")
+    private String contextPath;
 
     @Override
     public String storeAudioFromUrl(String sourceUrl, String callId) {
@@ -109,8 +112,8 @@ public class AudioStorageServiceImpl implements AudioStorageService {
             return null;
         }
 
-        if (publicUrlBase == null || publicUrlBase.isEmpty()) {
-            // If no public URL base is configured, just return the path
+        // If the stored path is already a URL, return it
+        if (storedPath.startsWith("http")) {
             return storedPath;
         }
 
@@ -118,9 +121,17 @@ public class AudioStorageServiceImpl implements AudioStorageService {
         File file = new File(storedPath);
         String filename = file.getName();
 
-        // Construct the public URL
-        return publicUrlBase.endsWith("/") 
-               ? publicUrlBase + filename
-               : publicUrlBase + "/" + filename;
+        // Construct audio path
+        String audioPath = "/audio/" + filename;
+
+        // Build URL using baseUrl, properly handling trailing slashes
+        if (baseUrl.endsWith("/")) {
+            return baseUrl + (contextPath.startsWith("/") ? contextPath.substring(1) : contextPath) + 
+                  (audioPath.startsWith("/") ? audioPath : "/" + audioPath);
+        } else {
+            return baseUrl + 
+                  (contextPath.isEmpty() ? "" : (contextPath.startsWith("/") ? contextPath : "/" + contextPath)) + 
+                  (audioPath.startsWith("/") ? audioPath : "/" + audioPath);
+        }
     }
 }

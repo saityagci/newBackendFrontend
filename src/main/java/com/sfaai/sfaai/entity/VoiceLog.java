@@ -38,7 +38,7 @@ public class VoiceLog {
     private String phoneNumber;
 
     @Column(name = "duration_minutes")
-    private Float durationMinutes;
+    private Double durationMinutes;
 
     @Column(name = "external_agent_id")
     private String externalAgentId;
@@ -98,14 +98,14 @@ public class VoiceLog {
     }
 
     // Calculated field for duration in minutes if not already set
-    public Float getDurationMinutes() {
+    public Double getDurationMinutes() {
         if (durationMinutes != null) {
             return durationMinutes;
         }
 
         if (startedAt != null && endedAt != null) {
             long seconds = java.time.Duration.between(startedAt, endedAt).getSeconds();
-            return seconds / 60.0f;
+            return seconds / 60.0;
         }
         return null;
     }

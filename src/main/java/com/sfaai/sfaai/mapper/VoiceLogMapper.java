@@ -42,6 +42,7 @@ public class VoiceLogMapper implements EntityMapper<VoiceLogDTO, VoiceLog> {
                 .rawPayload(entity.getRawPayload())
                 .conversationData(entity.getConversationData())
                 .createdAt(entity.getCreatedAt())
+                .durationMinutes(entity.getDurationMinutes())
                 .build();
     }
 
@@ -61,7 +62,8 @@ public class VoiceLogMapper implements EntityMapper<VoiceLogDTO, VoiceLog> {
                 .transcript(dto.getTranscript())
                 .rawPayload(dto.getRawPayload())
                 .conversationData(dto.getConversationData())
-                .status(VoiceLog.Status.INITIATED) // Default status
+                .status(VoiceLog.Status.INITIATED)
+                .durationMinutes(dto.getDurationMinutes())
                 .build();
 
         if (dto.getId() != null) {
@@ -92,10 +94,10 @@ public class VoiceLogMapper implements EntityMapper<VoiceLogDTO, VoiceLog> {
         VoiceLog.Status status = dto.getStatus() != null ? dto.getStatus() : VoiceLog.Status.INITIATED;
 
         // Calculate duration minutes if not provided but we have start and end times
-        Float durationMinutes = dto.getDurationMinutes();
+        Double durationMinutes = dto.getDurationMinutes();
         if (durationMinutes == null && dto.getStartedAt() != null && dto.getEndedAt() != null) {
             long seconds = java.time.Duration.between(dto.getStartedAt(), dto.getEndedAt()).getSeconds();
-            durationMinutes = seconds / 60.0f;
+            durationMinutes = seconds / 60.00;
         }
 
         VoiceLog voiceLog = VoiceLog.builder()
@@ -110,7 +112,12 @@ public class VoiceLogMapper implements EntityMapper<VoiceLogDTO, VoiceLog> {
                 .conversationData(dto.getConversationData())
                 .status(status)
                 .phoneNumber(dto.getPhoneNumber())
-                .durationMinutes(durationMinutes).build();
+                .durationMinutes(dto.getDurationMinutes())
+                .build();
+
+                        // Log the durationMinutes value to verify it's being set
+                        org.slf4j.LoggerFactory.getLogger(VoiceLogMapper.class)
+                .debug("Setting durationMinutes in VoiceLog entity: {}", durationMinutes);
 
         if (dto.getClientId() != null) {
             Client client = clientRepository.findById(dto.getClientId())

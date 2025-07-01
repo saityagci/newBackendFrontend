@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.*;
 
 import java.util.HashMap;
@@ -21,6 +22,7 @@ import java.util.Map;
 @Builder
 @ToString(exclude = "properties") // Exclude properties from toString to avoid large log outputs
 @JsonIgnoreProperties(ignoreUnknown = true)
+@JsonDeserialize(using = VapiWebhookPayloadDTODeserializer.class)
 public class VapiWebhookPayloadDTO {
 
     @Builder.Default
@@ -31,8 +33,22 @@ public class VapiWebhookPayloadDTO {
         return properties;
     }
 
-    @JsonAnySetter
+    // @JsonAnySetter removed as it's now handled by our custom deserializer
     public void add(String key, Object value) {
+        properties.put(key, value);
+    }
+    // At class level
+    @JsonProperty("durationMinutes")
+    private Double durationMinutes;
+
+    @JsonProperty("durationSeconds")
+    private Double durationSeconds;
+
+// ... more if you want
+
+    // (optional, if you want to use @JsonAnySetter)
+    @JsonAnySetter
+    public void set(String key, Object value) {
         properties.put(key, value);
     }
 
@@ -154,6 +170,7 @@ public class VapiWebhookPayloadDTO {
         private MessageAnalysisDTO analysis;
         private MessageArtifactDTO artifact;
         private Long timestamp;
+        private Double durationMinutes;
 
         @Getter
         @Setter
@@ -201,6 +218,7 @@ public class VapiWebhookPayloadDTO {
         public static class MessageArtifactDTO {
             private String transcript;
             private String recordingUrl;
+            private Double durationMinutes;
         }
     }
 
@@ -212,7 +230,7 @@ public class VapiWebhookPayloadDTO {
      * @return The call ID or null if not available
      */
     public String getCallId() {
-        return message != null && message.getCall() != null ? 
+        return message != null && message.getCall() != null ?
                message.getCall().getId() : null;
     }
 
@@ -221,7 +239,7 @@ public class VapiWebhookPayloadDTO {
      * @return The assistant ID or null if not available
      */
     public String getAssistantId() {
-        return message != null && message.getAssistant() != null ? 
+        return message != null && message.getAssistant() != null ?
                message.getAssistant().getId() : null;
     }
 
@@ -230,8 +248,8 @@ public class VapiWebhookPayloadDTO {
      * @return The caller phone number or null if not available
      */
     public String getCallerPhoneNumber() {
-        return message != null && message.getCall() != null && 
-               message.getCall().getCustomer() != null ? 
+        return message != null && message.getCall() != null &&
+               message.getCall().getCustomer() != null ?
                message.getCall().getCustomer().getNumber() : null;
     }
 
@@ -240,7 +258,7 @@ public class VapiWebhookPayloadDTO {
      * @return The summary or null if not available
      */
     public String getSummary() {
-        return message != null && message.getAnalysis() != null ? 
+        return message != null && message.getAnalysis() != null ?
                message.getAnalysis().getSummary() : null;
     }
 
@@ -249,7 +267,7 @@ public class VapiWebhookPayloadDTO {
      * @return The transcript or null if not available
      */
     public String getTranscript() {
-        return message != null && message.getArtifact() != null ? 
+        return message != null && message.getArtifact() != null ?
                message.getArtifact().getTranscript() : null;
     }
 
@@ -258,8 +276,106 @@ public class VapiWebhookPayloadDTO {
      * @return The audio URL or null if not available
      */
     public String getAudioUrl() {
-        return message != null && message.getArtifact() != null ? 
+        return message != null && message.getArtifact() != null ?
                message.getArtifact().getRecordingUrl() : null;
+    }
+
+    /**
+     * Get any available recording URL from the webhook payload.
+     * Vapi sometimes sends the recording URL at different locations including:
+     * - At the root level as "recordingUrl"
+     * - Nested inside message.artifact.recordingUrl
+     * - Inside a call object as call.recordingUrl
+     * - Inside an artifact object as artifact.recordingUrl or artifact.recording_url
+     * - Inside a recording object as recording.url
+     *
+     * This method checks all common locations to ensure we don't miss any format.
+     *
+     * @return The first available recording URL from any of the common locations
+     */
+    public String getAnyRecordingUrl() {
+        // Log all properties for debugging
+        System.out.println("DEBUG getAnyRecordingUrl - Properties: " + properties);
+        if (message != null && message.getArtifact() != null) {
+            System.out.println("DEBUG getAnyRecordingUrl - Message artifact: " + message.getArtifact());
+            System.out.println("DEBUG getAnyRecordingUrl - Message artifact recordingUrl: " +
+                    message.getArtifact().getRecordingUrl());
+        }
+
+        // First check direct root property - highest priority
+        if (properties.containsKey("recordingUrl")) {
+            Object url = properties.get("recordingUrl");
+            if (url != null && !url.toString().isEmpty()) {
+                System.out.println("DEBUG getAnyRecordingUrl - Found root recordingUrl: " + url);
+                return url.toString();
+            }
+        }
+
+        // Then try the nested path via getAudioUrl()
+        String nestedUrl = getAudioUrl();
+        if (nestedUrl != null && !nestedUrl.isEmpty()) {
+            System.out.println("DEBUG getAnyRecordingUrl - Found nested audioUrl: " + nestedUrl);
+            return nestedUrl;
+        }
+
+        // Check common paths for recording URLs
+        String[] possiblePaths = {
+            // Direct root property with alternative names
+            "recording_url",
+            "audioUrl",
+            "audio_url",
+            // Inside call object
+            "call.recordingUrl",
+            "call.recording_url",
+            // Inside artifact object
+            "artifact.recordingUrl",
+            "artifact.recording_url",
+            "artifact.audioUrl",
+            "artifact.audio_url",
+            // Inside recording object
+            "recording.url"
+        };
+
+        // Check all defined paths
+        for (String path : possiblePaths) {
+            String url = getStringValue(path);
+            if (url != null && !url.isEmpty()) {
+                System.out.println("DEBUG getAnyRecordingUrl - Found URL at path '" + path + "': " + url);
+                return url;
+            }
+        }
+
+        // Direct access to properties as a final fallback
+        for (String key : properties.keySet()) {
+            if ((key.toLowerCase().contains("recording") || key.toLowerCase().contains("audio")) &&
+                key.toLowerCase().contains("url")) {
+                Object value = properties.get(key);
+                if (value != null) {
+                    System.out.println("DEBUG getAnyRecordingUrl - Found URL in property '" + key + "': " + value);
+                    return value.toString();
+                }
+            }
+
+            // Check nested maps (try one level deep)
+            if (properties.get(key) instanceof Map) {
+                Map<String, Object> nestedMap = (Map<String, Object>) properties.get(key);
+                for (String nestedKey : nestedMap.keySet()) {
+                    if ((nestedKey.toLowerCase().contains("recording") ||
+                         nestedKey.toLowerCase().contains("audio")) &&
+                        nestedKey.toLowerCase().contains("url")) {
+                        Object value = nestedMap.get(nestedKey);
+                        if (value != null) {
+                            System.out.println("DEBUG getAnyRecordingUrl - Found URL in nested property '" +
+                                    key + "." + nestedKey + "': " + value);
+                            return value.toString();
+                        }
+                    }
+                }
+            }
+        }
+
+        System.out.println("DEBUG getAnyRecordingUrl - No recording URL found");
+        return null;
     }
 
     /**
@@ -285,5 +401,113 @@ public class VapiWebhookPayloadDTO {
         VapiWebhookPayloadDTO nestedDTO = new VapiWebhookPayloadDTO();
         nestedDTO.properties = nestedMap;
         return nestedDTO;
+    }
+    /**
+     * Extract the total conversation duration in minutes from the webhook payload
+     * with multiple fallback options for different duration formats.
+     *
+     * @return Duration in minutes as a Double, rounded to 4 decimal places, or null if not available
+     */
+    public Double extractDurationMinutes() {
+        org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(VapiWebhookPayloadDTO.class);
+        log.debug("Extracting duration in minutes from payload (minutes only, no conversion)");
+        // 0. Check POJO field
+        if (this.durationMinutes != null) {
+            log.debug("Found durationMinutes at root POJO field: {}", this.durationMinutes);
+            return roundToFourDecimals(this.durationMinutes);
+        }
+
+
+        // 2. Check for "durationMinutes" in message map
+        if (message != null) {
+            Map<String, Object> messageMap = getMapValue("message");
+            if (messageMap != null && messageMap.containsKey("durationMinutes")) {
+                Object durationObj = messageMap.get("durationMinutes");
+                Double durationMinutes = parseNumberToDouble(durationObj);
+                if (durationMinutes != null) {
+                    log.debug("Found durationMinutes in message map: {}", durationMinutes);
+                    return roundToFourDecimals(durationMinutes);
+                }
+            }
+        }
+
+        // 3. Check for "durationMinutes" at root level
+        Object durationObj = properties.get("durationMinutes");
+        Double durationMinutes = parseNumberToDouble(durationObj);
+        if (durationMinutes != null) {
+            log.debug("Found durationMinutes at root level: {}", durationMinutes);
+            return roundToFourDecimals(durationMinutes);
+        }
+
+        // 4. Try nested fields with the name "durationMinutes"
+        String[] minutePaths = {
+                "durationMinutes",
+                "call.durationMinutes",
+                "artifact.durationMinutes",
+                "recording.durationMinutes"
+        };
+        for (String path : minutePaths) {
+            Object value = getNestedValue(path);
+            Double duration = parseNumberToDouble(value);
+            if (duration != null) {
+                log.debug("Found durationMinutes at {}: {}", path, duration);
+                return roundToFourDecimals(duration);
+            }
+        }
+
+        // 5. Calculate from call.createdAt and call.updatedAt (ISO format)
+        String createdAt = getStringValue("call.createdAt");
+        String updatedAt = getStringValue("call.updatedAt");
+        if (createdAt != null && updatedAt != null) {
+            try {
+                java.time.Instant start = java.time.Instant.parse(createdAt);
+                java.time.Instant end = java.time.Instant.parse(updatedAt);
+                long diffMs = java.time.Duration.between(start, end).toMillis();
+                double callMinutes = diffMs / 60000.0;
+                if (callMinutes > 0.001) {
+                    log.debug("Calculated durationMinutes from createdAt/updatedAt: {}", callMinutes);
+                    return roundToFourDecimals(callMinutes);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to parse createdAt/updatedAt: {}", e.getMessage());
+            }
+        }
+
+        log.debug("No durationMinutes found in payload");
+        return null;
+    }
+
+    // Helper methods:
+    private Double parseNumberToDouble(Object obj) {
+        if (obj == null) return null;
+        if (obj instanceof Number) return ((Number) obj).doubleValue();
+        if (obj instanceof String) {
+            try {
+                return Double.parseDouble(((String) obj).trim());
+            } catch (NumberFormatException ignored) {}
+        }
+        return null;
+    }
+
+    private Double roundToFourDecimals(Double value) {
+        if (value == null) return null;
+        return Math.round(value * 10000.0) / 10000.0;
+    }
+
+
+    /**
+     * Get duration in minutes from the payload (legacy method, use extractDurationMinutes instead)
+     * @deprecated Use extractDurationMinutes() for more robust duration extraction
+     */
+    @Deprecated
+    public Double getDurationMinutes() {
+        Object val = properties.get("durationMinutes");
+        if (val instanceof Number) return ((Number) val).doubleValue();
+        if (val != null) {
+            try {
+                return Double.parseDouble(val.toString());
+            } catch (NumberFormatException ignored) {}
+        }
+        return null;
     }
 }

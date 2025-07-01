@@ -25,8 +25,8 @@ public class VoiceLogWebhookDTO {
     private String callId;
     private String agentExternalId;
     private String callStatus;
-        private String phoneNumber;
-        private Float durationMinutes;
+    private String phoneNumber;
+    private Double durationMinutes;
     private LocalDateTime callStartTime;
     private LocalDateTime callEndTime;
     private String recordingUrl;

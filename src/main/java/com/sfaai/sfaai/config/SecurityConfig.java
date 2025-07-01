@@ -103,6 +103,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/register", "/api/login").permitAll()
                         .requestMatchers(apiDocsPath + "/**", swaggerUiPath + "/**").permitAll()
                         .requestMatchers("/api/webhooks/vapi/**").permitAll()
+                        .requestMatchers("/audio/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

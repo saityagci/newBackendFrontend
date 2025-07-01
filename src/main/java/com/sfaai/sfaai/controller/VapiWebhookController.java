@@ -1,9 +1,16 @@
 package com.sfaai.sfaai.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sfaai.sfaai.dto.VapiCallLogDTO;
 import com.sfaai.sfaai.dto.VapiWebhookPayloadDTO;
 import com.sfaai.sfaai.dto.VoiceLogCreateDTO;
 import com.sfaai.sfaai.dto.VoiceLogDTO;
+
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.stream.Collectors;
 import com.sfaai.sfaai.entity.Client;
 import com.sfaai.sfaai.entity.VapiAssistant;
 import com.sfaai.sfaai.mapper.VapiWebhookMapper;
@@ -20,6 +27,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -112,12 +120,32 @@ public class VapiWebhookController {
     )
     @PostMapping(value = "/call-logs", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Transactional
-    public ResponseEntity<Map<String, Object>> receiveCallLogWebhook(@RequestBody VapiWebhookPayloadDTO payload) {
+    public ResponseEntity<Map<String, Object>> receiveCallLogWebhook(HttpServletRequest request) throws IOException {
         log.info("Received Vapi call log webhook");
-        // Don't log the entire payload in production to avoid sensitive data in logs
-        log.debug("Webhook payload received with keys: {}", 
-                payload != null ? String.join(", ", payload.getProperties().keySet()) : "null");
 
+        // Read the raw JSON string from the request before mapping to DTO
+        String rawJson = new BufferedReader(new InputStreamReader(request.getInputStream()))
+                .lines().collect(Collectors.joining("\n"));
+        log.info("RAW JSON WEBHOOK PAYLOAD: {}", rawJson);
+
+        // Parse to DTO using ObjectMapper
+        ObjectMapper objectMapper = new ObjectMapper();
+        VapiWebhookPayloadDTO payload = objectMapper.readValue(rawJson, VapiWebhookPayloadDTO.class);
+
+        log.info("Full webhook payload properties: {}", payload.getProperties());
+        // --- ADD THIS FOR DEBUGGING ---
+        // Print all top-level property keys (optional)
+        log.debug("Webhook payload received with keys: {}",
+                payload != null ? String.join(", ", payload.getProperties().keySet()) : "null");
+        // Print the audio URL from the payload DTO
+        log.info("Recording URL from DTO: {}", payload.getAnyRecordingUrl());
+
+        // Log detailed DTO information for debugging
+        log.info("DTO properties: {}", payload.getProperties());
+        log.info("DTO message: {}", payload.getMessage());
+        log.info("DTO getAnyRecordingUrl(): {}", payload.getAnyRecordingUrl());
+        log.info("DTO getAudioUrl(): {}", payload.getAudioUrl());
+        // --- END DEBUGGING ---
         try {
             // Parse the webhook payload
             VapiCallLogDTO callLog = webhookMapper.parseWebhookPayload(payload);
@@ -130,10 +158,11 @@ public class VapiWebhookController {
             }
 
             // Log only essential info, not the entire payload
-            log.info("Parsed call log with ID: {}, assistant ID: {}, status: {}", 
+            log.info("Parsed call log with ID: {}, assistant ID: {}, status: {}, audio URL: {}",
                     callLog.getCallId(), 
                     callLog.getAssistantId(),
                     callLog.getStatus());
+                    callLog.getAudioUrl();
 
             // If the call has no ID, generate a response with an error
             if (callLog.getCallId() == null) {

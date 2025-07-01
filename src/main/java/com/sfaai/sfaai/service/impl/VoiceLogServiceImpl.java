@@ -93,6 +93,8 @@ public class VoiceLogServiceImpl implements VoiceLogService {
      */
     @Transactional
     protected VoiceLogDTO createNewVoiceLog(VoiceLogCreateDTO dto) {
+        // Log the durationMinutes value from the DTO
+        log.debug("Creating new voice log with durationMinutes: {}", dto.getDurationMinutes());
         // Create a new voice log entity from the DTO
         VoiceLog voiceLog = voiceLogMapper.createEntityFromDto(dto);
 
@@ -124,6 +126,9 @@ public class VoiceLogServiceImpl implements VoiceLogService {
      */
     @Transactional
     protected VoiceLogDTO updateVoiceLog(VoiceLog existingLog, VoiceLogCreateDTO dto) {
+        // Log the incoming durationMinutes value
+        log.debug("Updating voice log (id={}) with durationMinutes: {}", 
+                existingLog.getId(), dto.getDurationMinutes());
         // Log the current state of the critical fields
         log.info("Updating voice log ID {} with new data. Current values - audioUrl: {}, durationMinutes: {}, startedAt: {}, endedAt: {}", 
                 existingLog.getId(), 
@@ -161,6 +166,20 @@ public class VoiceLogServiceImpl implements VoiceLogService {
         if (dto.getEndedAt() != null) {
             log.debug("Updating endedAt from {} to {}", existingLog.getEndedAt(), dto.getEndedAt());
             existingLog.setEndedAt(dto.getEndedAt());
+        }
+
+        // Explicitly set durationMinutes if provided
+        if (dto.getDurationMinutes() != null) {
+            log.debug("Setting durationMinutes to {} for voice log id={}", 
+                    dto.getDurationMinutes(), existingLog.getId());
+            existingLog.setDurationMinutes(dto.getDurationMinutes());
+        } else if (dto.getStartedAt() != null && dto.getEndedAt() != null) {
+            // Calculate durationMinutes from start/end times if not explicitly provided
+            long seconds = java.time.Duration.between(dto.getStartedAt(), dto.getEndedAt()).getSeconds();
+            double calculatedDurationMinutes = seconds / 60.0f;
+            log.debug("Calculated durationMinutes as {} for voice log id={}", 
+                    calculatedDurationMinutes, existingLog.getId());
+            existingLog.setDurationMinutes(calculatedDurationMinutes);
         }
 
         // Update transcript only if it's not null or empty
@@ -240,7 +259,7 @@ public class VoiceLogServiceImpl implements VoiceLogService {
         else if (existingLog.getStartedAt() != null && existingLog.getEndedAt() != null) {
             // Recalculate even if we already have a value, as the timestamps might have been updated
             long seconds = java.time.Duration.between(existingLog.getStartedAt(), existingLog.getEndedAt()).getSeconds();
-            float minutes = seconds / 60.0f;
+            double minutes = seconds / 60.0f;
             log.debug("Calculated durationMinutes from timestamps: {} (was: {})", minutes, existingLog.getDurationMinutes());
             existingLog.setDurationMinutes(minutes);
         }

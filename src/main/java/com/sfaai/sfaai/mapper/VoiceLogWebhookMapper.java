@@ -43,10 +43,14 @@ public class VoiceLogWebhookMapper {
                         }
 
                         // Calculate duration minutes if not provided but we have start and end times
-                        Float durationMinutes = webhookDTO.getDurationMinutes();
+                        Double durationMinutes = webhookDTO.getDurationMinutes();
+                        org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(VoiceLogWebhookMapper.class);
+                        log.debug("Initial durationMinutes from webhook: {}", durationMinutes);
+
                         if (durationMinutes == null && webhookDTO.getCallStartTime() != null && webhookDTO.getCallEndTime() != null) {
                             long seconds = java.time.Duration.between(webhookDTO.getCallStartTime(), webhookDTO.getCallEndTime()).getSeconds();
-                            durationMinutes = seconds / 60.0f;
+                            durationMinutes = seconds / 60.00;
+                            log.debug("Calculated durationMinutes from start/end times: {}", durationMinutes);
                         }
 
                         // Ensure we have a valid audio URL - get directly from the DTO first
@@ -113,5 +117,7 @@ public class VoiceLogWebhookMapper {
                 .phoneNumber(webhookDTO.getPhoneNumber())
                 .durationMinutes(durationMinutes)
                 .build();
+
+
     }
 }

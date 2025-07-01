@@ -146,14 +146,23 @@ public class VapiWebhookMapper {
                 if (artifact != null && artifact.get("recording_url") != null)
                     audioUrl = artifact.get("recording_url").toString();
             }
-            // Try alternative fields for audio URL
-            if (audioUrl == null || audioUrl.isEmpty()) {
-                audioUrl = (String) rootMap.get("recordingUrl");
+            // Check if we can get the URL directly from the payload object using our new method
+            if (payload != null) {
+                audioUrl = payload.getAnyRecordingUrl();
             }
-            // Try the call object for recording URL
+
+            // Get call info object for later use
             Map<String, Object> callInfo = (Map<String, Object>) getField.apply("call");
-            if (audioUrl == null || audioUrl.isEmpty() && callInfo != null) {
-                audioUrl = (String) callInfo.get("recordingUrl");
+
+            // If the direct method didn't work, try the legacy approach
+            if (audioUrl == null || audioUrl.isEmpty()) {
+                // Try alternative fields for audio URL
+                audioUrl = (String) rootMap.get("recordingUrl");
+
+                // Try the call object for recording URL
+                if (audioUrl == null || audioUrl.isEmpty() && callInfo != null) {
+                    audioUrl = (String) callInfo.get("recordingUrl");
+                }
             }
             // Try artifact at root level
             if (audioUrl == null || audioUrl.isEmpty()) {
@@ -184,87 +193,21 @@ public class VapiWebhookMapper {
             builder.audioUrl(audioUrl);
 
             // ---- durationMinutes ----
-            Float durationMinutes = null;
-            // Try direct field first
-            Object durationObj = getField.apply("durationMinutes");
-            if (durationObj instanceof Number) {
-                durationMinutes = ((Number) durationObj).floatValue();
-            } else if (durationObj instanceof String) {
-                try {
-                    durationMinutes = Float.parseFloat((String) durationObj);
-                } catch (NumberFormatException e) {
-                    log.debug("Could not parse durationMinutes as float: {}", durationObj);
+            Double durationMinutes = null;
+
+            // Use the new robust extractDurationMinutes method
+            if (payload != null) {
+                Double extractedDuration = payload.extractDurationMinutes();
+                if (extractedDuration != null) {
+                    durationMinutes = extractedDuration.doubleValue();
+                    log.debug("Successfully extracted duration minutes using robust method: {}", durationMinutes);
                 }
             }
 
-            // Try alternative fields if not found
+            // Fallback to calculating from start/end time if still null
             if (durationMinutes == null) {
-                Object durationSecondsObj = getField.apply("durationSeconds");
-                if (durationSecondsObj instanceof Number) {
-                    durationMinutes = ((Number) durationSecondsObj).floatValue() / 60.0f;
-                } else if (durationSecondsObj instanceof String) {
-                    try {
-                        durationMinutes = Float.parseFloat((String) durationSecondsObj) / 60.0f;
-                    } catch (NumberFormatException e) {
-                        log.debug("Could not parse durationSeconds as float: {}", durationSecondsObj);
-                    }
-                }
-            }
-
-            // Try duration field (which could be in seconds)
-            if (durationMinutes == null) {
-                Object duration = getField.apply("duration");
-                if (duration instanceof Number) {
-                    // Assume it's in seconds if greater than 500 (no call is 500 minutes)
-                    double value = ((Number) duration).doubleValue();
-                    if (value > 500) {
-                        durationMinutes = (float) (value / 60.0);
-                    } else {
-                        durationMinutes = (float) value;
-                    }
-                } else if (duration instanceof String) {
-                    try {
-                        double value = Double.parseDouble((String) duration);
-                        if (value > 500) {
-                            durationMinutes = (float) (value / 60.0);
-                        } else {
-                            durationMinutes = (float) value;
-                        }
-                    } catch (NumberFormatException e) {
-                        log.debug("Could not parse duration as float: {}", duration);
-                    }
-                }
-            }
-
-            // Try to extract from artifact
-            if (durationMinutes == null) {
-                Map<String, Object> artifact = (Map<String, Object>) getField.apply("artifact");
-                if (artifact != null) {
-                    Object artifactDuration = artifact.get("durationMinutes");
-                    if (artifactDuration == null) artifactDuration = artifact.get("duration_minutes");
-                    if (artifactDuration == null) artifactDuration = artifact.get("duration");
-
-                    if (artifactDuration instanceof Number) {
-                        double value = ((Number) artifactDuration).doubleValue();
-                        // If it's larger than 500, assume it's in seconds
-                        if (value > 500) {
-                            durationMinutes = (float) (value / 60.0);
-                        } else {
-                            durationMinutes = (float) value;
-                        }
-                    } else if (artifactDuration instanceof String) {
-                        try {
-                            double value = Double.parseDouble((String) artifactDuration);
-                            if (value > 500) {
-                                durationMinutes = (float) (value / 60.0);
-                            } else {
-                                durationMinutes = (float) value;
-                            }
-                        } catch (NumberFormatException e) {
-                            log.debug("Could not parse artifact duration as float: {}", artifactDuration);
-                        }
-                    }
-                }
+                // This fallback will be handled later after start/end time extraction
+                log.debug("Could not extract duration from payload fields, will try to calculate from start/end time");
             }
 
             // ---- startTime/endTime ----
@@ -335,7 +278,7 @@ public class VapiWebhookMapper {
             // If durationMinutes is still not found and we have start/end times, calculate it
             if (durationMinutes == null && startTime != null && endTime != null) {
                 long seconds = java.time.Duration.between(startTime, endTime).getSeconds();
-                durationMinutes = seconds / 60.0f;
+                durationMinutes = seconds / 60.00;
             }
 
             // Set duration field
@@ -488,15 +431,15 @@ public class VapiWebhookMapper {
         // Build the voice log create DTO with null checks
 
         // Use the explicit durationMinutes if available, otherwise fall back to calculated from duration
-        Float finalDurationMinutes = callLog.getDurationMinutes();
+        Double finalDurationMinutes = callLog.getDurationMinutes();
         if (finalDurationMinutes == null && callLog.getDuration() != null) {
-            finalDurationMinutes = callLog.getDuration().floatValue() / 60.0f;
+            finalDurationMinutes = callLog.getDuration().doubleValue() / 60.00;
         }
 
         // If we have startTime and endTime but no duration, calculate it
         if (finalDurationMinutes == null && callLog.getStartTime() != null && callLog.getEndTime() != null) {
             long seconds = java.time.Duration.between(callLog.getStartTime(), callLog.getEndTime()).getSeconds();
-            finalDurationMinutes = seconds / 60.0f;
+            finalDurationMinutes = seconds / 60.00;
         }
 
         log.debug("Mapping to VoiceLogCreateDTO - startedAt: {}, endedAt: {}, audioUrl: {}, durationMinutes: {}",

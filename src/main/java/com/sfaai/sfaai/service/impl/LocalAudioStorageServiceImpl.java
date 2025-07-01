@@ -30,8 +30,11 @@ public class LocalAudioStorageServiceImpl implements AudioStorageService {
     @Value("${app.audio-storage.local-path:uploads/audio}")
     private String storagePath;
 
-    @Value("${app.audio-storage.base-url:http://localhost:8080/audio}")
+    @Value("${audio.base-url:http://localhost:8880}")
     private String baseUrl;
+
+    @Value("${server.servlet.context-path:}")
+    private String contextPath;
 
     @Override
     public String storeAudioFromUrl(String sourceUrl, String callId) {
@@ -70,7 +73,19 @@ public class LocalAudioStorageServiceImpl implements AudioStorageService {
 
         // Extract just the filename from the path
         String fileName = Paths.get(storagePath).getFileName().toString();
-        return baseUrl + "/" + fileName;
+
+        // Construct audio path
+        String audioPath = "/audio/" + fileName;
+
+        // Build URL using baseUrl, properly handling trailing slashes
+        if (baseUrl.endsWith("/")) {
+            return baseUrl + (contextPath.startsWith("/") ? contextPath.substring(1) : contextPath) + 
+                  (audioPath.startsWith("/") ? audioPath : "/" + audioPath);
+        } else {
+            return baseUrl + 
+                  (contextPath.isEmpty() ? "" : (contextPath.startsWith("/") ? contextPath : "/" + contextPath)) + 
+                  (audioPath.startsWith("/") ? audioPath : "/" + audioPath);
+        }
     }
 
     /**
