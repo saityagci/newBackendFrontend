@@ -21,6 +21,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -83,37 +84,77 @@ public class ElevenLabsAssistantServiceImpl implements ElevenLabsAssistantServic
         }
 
         int count = 0;
+        List<ElevenLabsAssistant> toSave = new java.util.ArrayList<>();
         for (ElevenLabsAssistantDTO assistantDto : apiAssistants.getAssistants()) {
             try {
                 String assistantId = assistantDto.getAssistantId();
-                Optional<ElevenLabsAssistant> existingAssistant = assistantRepository.findById(assistantId);
-
-                ElevenLabsAssistant assistant;
-                if (existingAssistant.isPresent()) {
-                    assistant = existingAssistant.get();
-                    // Update existing fields
-                    assistant.setName(assistantDto.getName());
-                    assistant.setDescription(assistantDto.getDescription());
-                    assistant.setVoiceId(assistantDto.getVoiceId());
-                    assistant.setVoiceName(assistantDto.getVoiceName());
-                    assistant.setModelId(assistantDto.getModelId());
-                } else {
-                    // Create new assistant
-                    assistant = assistantMapper.toEntity(assistantDto);
+                ElevenLabsAssistantDTO fullDetails = fetchAssistantDetailsFromApi(assistantId);
+                if (fullDetails == null) {
+                    log.warn("Could not fetch details for assistant {}", assistantId);
+                    continue;
                 }
-
-                // Set raw data for reference
-                assistant.setRawData(objectMapper.writeValueAsString(assistantDto));
-                assistant.setLastSyncedAt(LocalDateTime.now());
-
-                assistantRepository.save(assistant);
-                count++;
+                Optional<ElevenLabsAssistant> existingAssistantOpt = assistantRepository.findById(assistantId);
+                ElevenLabsAssistant assistantEntity;
+                boolean changed = false;
+                if (existingAssistantOpt.isPresent()) {
+                    assistantEntity = existingAssistantOpt.get();
+                    // Only update if changed
+                    String newRaw = objectMapper.writeValueAsString(fullDetails);
+                    if (!newRaw.equals(assistantEntity.getRawData())) {
+                        assistantEntity.setName(fullDetails.getName());
+                        assistantEntity.setDescription(fullDetails.getDescription());
+                        assistantEntity.setVoiceId(fullDetails.getVoiceId());
+                        assistantEntity.setVoiceName(fullDetails.getVoiceName());
+                        assistantEntity.setModelId(fullDetails.getModelId());
+                        assistantEntity.setRawData(newRaw);
+                        assistantEntity.setLastSyncedAt(LocalDateTime.now());
+                        changed = true;
+                    }
+                } else {
+                    assistantEntity = assistantMapper.toEntity(fullDetails);
+                    assistantEntity.setRawData(objectMapper.writeValueAsString(fullDetails));
+                    assistantEntity.setLastSyncedAt(LocalDateTime.now());
+                    changed = true;
+                }
+                if (changed) {
+                    toSave.add(assistantEntity);
+                    count++;
+                }
             } catch (Exception e) {
                 log.error("Error syncing ElevenLabs assistant: {}", assistantDto.getAssistantId(), e);
             }
         }
-
-        log.info("Synchronized {} ElevenLabs assistants", count);
+        if (!toSave.isEmpty()) {
+            assistantRepository.saveAll(toSave);
+        }
+        log.info("Synchronized {} ElevenLabs assistants (inserted/updated)", count);
         return count;
+    }
+
+    /**
+     * Fetch full details for a single ElevenLabs assistant by ID
+     */
+    private ElevenLabsAssistantDTO fetchAssistantDetailsFromApi(String assistantId) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("xi-api-key", elevenLabsConfig.getApiKey());
+            HttpEntity<?> entity = new HttpEntity<>(headers);
+            String url = UriComponentsBuilder
+                    .fromHttpUrl(elevenLabsConfig.getApiUrl())
+                    .path("/v1/convai/agents/")
+                    .path(assistantId)
+                    .build()
+                    .toUriString();
+            ResponseEntity<ElevenLabsAssistantDTO> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    entity,
+                    ElevenLabsAssistantDTO.class
+            );
+            return response.getBody();
+        } catch (Exception e) {
+            log.error("Failed to fetch full details for ElevenLabs assistant {}: {}", assistantId, e.getMessage());
+            return null;
+        }
     }
 }
