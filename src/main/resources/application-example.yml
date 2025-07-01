@@ -1,0 +1,5 @@
+# ElevenLabs Configuration
+elevenlabs:
+  api:
+    key: "sk_de406ce16164e5fbe44ab33d4a86ff4806ce6e9debfb1461"  # Your ElevenLabs API key
+    url: "https://api.elevenlabs.io"  # ElevenLabs API base URL

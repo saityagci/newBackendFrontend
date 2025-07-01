@@ -10,6 +10,7 @@ import com.sfaai.sfaai.repository.ClientRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -32,7 +33,7 @@ public class VoiceLogMapper implements EntityMapper<VoiceLogDTO, VoiceLog> {
                 .id(entity.getId())
                 .agentId(entity.getAgent().getId())
                 .clientId(entity.getClient().getId())
-                .provider(entity.getProvider())
+                .provider(String.valueOf(entity.getProvider()))
                 .externalCallId(entity.getExternalCallId())
                 .externalAgentId(entity.getExternalAgentId())
                 .startedAt(entity.getStartedAt())
@@ -54,7 +55,7 @@ public class VoiceLogMapper implements EntityMapper<VoiceLogDTO, VoiceLog> {
 
         VoiceLog voiceLog = VoiceLog.builder()
                 .externalCallId(dto.getExternalCallId())
-                .provider(dto.getProvider())
+                .provider(VoiceLog.Provider.valueOf(dto.getProvider().toUpperCase()))
                 .externalAgentId(dto.getExternalAgentId())
                 .startedAt(dto.getStartedAt())
                 .endedAt(dto.getEndedAt())
@@ -100,9 +101,18 @@ public class VoiceLogMapper implements EntityMapper<VoiceLogDTO, VoiceLog> {
             durationMinutes = seconds / 60.00;
         }
 
-        VoiceLog voiceLog = VoiceLog.builder()
+                        // Safe conversion of provider string to enum with proper error handling
+                        VoiceLog.Provider provider;
+                        try {
+                            provider = VoiceLog.Provider.valueOf(dto.getProvider().toUpperCase());
+                        } catch (IllegalArgumentException e) {
+                            throw new IllegalArgumentException("Invalid provider value: " + dto.getProvider() + 
+                ". Allowed values are: " + java.util.Arrays.toString(VoiceLog.Provider.values()));
+                        }
+
+                        VoiceLog voiceLog = VoiceLog.builder()
                 .externalCallId(dto.getExternalCallId())
-                .provider(dto.getProvider())
+                .provider(provider)
                 .externalAgentId(dto.getExternalAgentId())
                 .startedAt(dto.getStartedAt())
                 .endedAt(dto.getEndedAt())

@@ -20,6 +20,39 @@ public class VapiWebhookPayloadDTODeserializer extends JsonDeserializer<VapiWebh
         Map<String, Object> properties = new HashMap<>();
         dto.setProperties(properties);
 
+        // Explicitly map duration fields to the DTO object
+        if (root.has("durationMinutes")) {
+            JsonNode durationNode = root.get("durationMinutes");
+            if (durationNode.isNumber()) {
+                dto.setDurationMinutes(durationNode.asDouble());
+                System.out.println("DEBUG: Found root-level durationMinutes: " + durationNode.asDouble());
+            } else if (durationNode.isTextual()) {
+                try {
+                    double value = Double.parseDouble(durationNode.asText());
+                    dto.setDurationMinutes(value);
+                    System.out.println("DEBUG: Found root-level durationMinutes (string): " + value);
+                } catch (NumberFormatException e) {
+                    System.out.println("DEBUG: Could not parse durationMinutes: " + durationNode.asText());
+                }
+            }
+        }
+
+        if (root.has("durationSeconds")) {
+            JsonNode durationNode = root.get("durationSeconds");
+            if (durationNode.isNumber()) {
+                dto.setDurationSeconds(durationNode.asDouble());
+                System.out.println("DEBUG: Found root-level durationSeconds: " + durationNode.asDouble());
+            } else if (durationNode.isTextual()) {
+                try {
+                    double value = Double.parseDouble(durationNode.asText());
+                    dto.setDurationSeconds(value);
+                    System.out.println("DEBUG: Found root-level durationSeconds (string): " + value);
+                } catch (NumberFormatException e) {
+                    System.out.println("DEBUG: Could not parse durationSeconds: " + durationNode.asText());
+                }
+            }
+        }
+
         // Log the root node for debugging
         System.out.println("DEBUG: Root node: " + root.toString());
 
@@ -36,6 +69,50 @@ public class VapiWebhookPayloadDTODeserializer extends JsonDeserializer<VapiWebh
                     String recordingUrl = messageNode.get("artifact").get("recordingUrl").asText();
                     System.out.println("DEBUG: Found nested recordingUrl: " + recordingUrl);
                 }
+
+                // Check for durationMinutes in message object
+                if (messageNode.has("durationMinutes")) {
+                    JsonNode durationNode = messageNode.get("durationMinutes");
+                    if (durationNode.isNumber()) {
+                        message.setDurationMinutes(durationNode.asDouble());
+                        System.out.println("DEBUG: Found message-level durationMinutes: " + durationNode.asDouble());
+                    } else if (durationNode.isTextual()) {
+                        try {
+                            double value = Double.parseDouble(durationNode.asText());
+                            message.setDurationMinutes(value);
+                            System.out.println("DEBUG: Found message-level durationMinutes (string): " + value);
+                        } catch (NumberFormatException e) {
+                            System.out.println("DEBUG: Could not parse message durationMinutes: " + durationNode.asText());
+                        }
+                    }
+                }
+
+                // Check for durationMinutes in artifact
+                if (messageNode.has("artifact")) {
+                    JsonNode artifactNode = messageNode.get("artifact");
+                    if (artifactNode.has("durationMinutes")) {
+                        JsonNode durationNode = artifactNode.get("durationMinutes");
+                        if (durationNode.isNumber()) {
+                            if (message.getArtifact() == null) {
+                                message.setArtifact(new VapiWebhookPayloadDTO.MessageDTO.MessageArtifactDTO());
+                            }
+                            message.getArtifact().setDurationMinutes(durationNode.asDouble());
+                            System.out.println("DEBUG: Found artifact-level durationMinutes: " + durationNode.asDouble());
+                        } else if (durationNode.isTextual()) {
+                            try {
+                                double value = Double.parseDouble(durationNode.asText());
+                                if (message.getArtifact() == null) {
+                                    message.setArtifact(new VapiWebhookPayloadDTO.MessageDTO.MessageArtifactDTO());
+                                }
+                                message.getArtifact().setDurationMinutes(value);
+                                System.out.println("DEBUG: Found artifact-level durationMinutes (string): " + value);
+                            } catch (NumberFormatException e) {
+                                System.out.println("DEBUG: Could not parse artifact durationMinutes: " + durationNode.asText());
+                            }
+                        }
+                    }
+                }
+
             } catch (Exception e) {
                 System.out.println("DEBUG: Error parsing message node: " + e.getMessage());
             }

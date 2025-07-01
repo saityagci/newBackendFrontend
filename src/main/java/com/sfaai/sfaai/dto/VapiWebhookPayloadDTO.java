@@ -411,14 +411,40 @@ public class VapiWebhookPayloadDTO {
     public Double extractDurationMinutes() {
         org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(VapiWebhookPayloadDTO.class);
         log.debug("Extracting duration in minutes from payload (minutes only, no conversion)");
+
+        // For debugging only - log all key paths that might contain duration
+        logAllPotentialDurationPaths();
+
         // 0. Check POJO field
         if (this.durationMinutes != null) {
             log.debug("Found durationMinutes at root POJO field: {}", this.durationMinutes);
             return roundToFourDecimals(this.durationMinutes);
         }
 
+        // 0.1 Check if we have durationSeconds and convert
+        if (this.durationSeconds != null) {
+            Double minutes = this.durationSeconds / 60.0;
+            log.debug("Converting durationSeconds to minutes: {} seconds = {} minutes", this.durationSeconds, minutes);
+            return roundToFourDecimals(minutes);
+        }
 
-        // 2. Check for "durationMinutes" in message map
+
+        // 1. Check message object structure first - this should be properly populated by the deserializer
+        if (message != null) {
+            // 1.1 Direct durationMinutes in the message object
+            if (message.getDurationMinutes() != null) {
+                log.debug("Found durationMinutes in message object: {}", message.getDurationMinutes());
+                return roundToFourDecimals(message.getDurationMinutes());
+            }
+
+            // 1.2 Check for durationMinutes in the artifact
+            if (message.getArtifact() != null && message.getArtifact().getDurationMinutes() != null) {
+                log.debug("Found durationMinutes in message.artifact: {}", message.getArtifact().getDurationMinutes());
+                return roundToFourDecimals(message.getArtifact().getDurationMinutes());
+            }
+        }
+
+        // 2. Fall back to checking for "durationMinutes" in message map (should be redundant with above)
         if (message != null) {
             Map<String, Object> messageMap = getMapValue("message");
             if (messageMap != null && messageMap.containsKey("durationMinutes")) {
@@ -426,6 +452,17 @@ public class VapiWebhookPayloadDTO {
                 Double durationMinutes = parseNumberToDouble(durationObj);
                 if (durationMinutes != null) {
                     log.debug("Found durationMinutes in message map: {}", durationMinutes);
+                    return roundToFourDecimals(durationMinutes);
+                }
+            }
+
+            // 2.1 Check artifact map as well
+            Map<String, Object> artifactMap = getMapValue("message.artifact");
+            if (artifactMap != null && artifactMap.containsKey("durationMinutes")) {
+                Object durationObj = artifactMap.get("durationMinutes");
+                Double durationMinutes = parseNumberToDouble(durationObj);
+                if (durationMinutes != null) {
+                    log.debug("Found durationMinutes in message.artifact map: {}", durationMinutes);
                     return roundToFourDecimals(durationMinutes);
                 }
             }
@@ -455,21 +492,55 @@ public class VapiWebhookPayloadDTO {
             }
         }
 
-        // 5. Calculate from call.createdAt and call.updatedAt (ISO format)
-        String createdAt = getStringValue("call.createdAt");
-        String updatedAt = getStringValue("call.updatedAt");
-        if (createdAt != null && updatedAt != null) {
-            try {
-                java.time.Instant start = java.time.Instant.parse(createdAt);
-                java.time.Instant end = java.time.Instant.parse(updatedAt);
-                long diffMs = java.time.Duration.between(start, end).toMillis();
-                double callMinutes = diffMs / 60000.0;
-                if (callMinutes > 0.001) {
-                    log.debug("Calculated durationMinutes from createdAt/updatedAt: {}", callMinutes);
-                    return roundToFourDecimals(callMinutes);
+        // 5. Calculate from timestamps using various field names and formats
+        // Common field name pairs for start/end times
+        String[][] timeFieldPairs = {
+            // Standard ISO timestamp fields
+            {"call.createdAt", "call.updatedAt"},
+            {"call.created_at", "call.updated_at"},
+            {"createdAt", "updatedAt"},
+            {"created_at", "updated_at"},
+
+            // Start/end time pairs
+            {"call.startTime", "call.endTime"},
+            {"call.start_time", "call.end_time"},
+            {"startTime", "endTime"},
+            {"start_time", "end_time"},
+            {"startedAt", "endedAt"},
+            {"started_at", "ended_at"},
+
+            // Timestamps in artifact
+            {"artifact.startTime", "artifact.endTime"},
+            {"artifact.start_time", "artifact.end_time"},
+            {"message.artifact.startTime", "message.artifact.endTime"},
+            {"message.artifact.start_time", "message.artifact.end_time"}
+        };
+
+        for (String[] fieldPair : timeFieldPairs) {
+            String startField = fieldPair[0];
+            String endField = fieldPair[1];
+
+            String startTimeStr = getStringValue(startField);
+            String endTimeStr = getStringValue(endField);
+
+            if (startTimeStr != null && endTimeStr != null) {
+                try {
+                    // Try multiple date formats
+                    java.time.Instant start = parseTimestamp(startTimeStr);
+                    java.time.Instant end = parseTimestamp(endTimeStr);
+
+                    if (start != null && end != null) {
+                        long diffMs = java.time.Duration.between(start, end).toMillis();
+                        double callMinutes = diffMs / 60000.0;
+                        if (callMinutes > 0.001) {
+                            log.debug("Calculated durationMinutes from {} and {}: {}", startField, endField, callMinutes);
+                            return roundToFourDecimals(callMinutes);
+                        }
+                    }
+                } catch (Exception e) {
+                    log.debug("Failed to parse timestamps from {} and {}: {}", startField, endField, e.getMessage());
+                    // Continue trying other formats
                 }
-            } catch (Exception e) {
-                log.warn("Failed to parse createdAt/updatedAt: {}", e.getMessage());
             }
         }
 
@@ -492,6 +563,110 @@ public class VapiWebhookPayloadDTO {
     private Double roundToFourDecimals(Double value) {
         if (value == null) return null;
         return Math.round(value * 10000.0) / 10000.0;
+    }
+
+    /**
+     * Parse a timestamp string in multiple formats:
+     * - ISO-8601 format (2023-07-01T12:34:56Z)
+     * - Unix timestamp in seconds (1625144096)
+     * - Unix timestamp in milliseconds (1625144096000)
+     * 
+     * @param timestampStr The timestamp string to parse
+     * @return An Instant representing the timestamp, or null if parsing fails
+     */
+    private java.time.Instant parseTimestamp(String timestampStr) {
+        if (timestampStr == null || timestampStr.isEmpty()) {
+            return null;
+        }
+
+        // Try ISO format first
+        try {
+            return java.time.Instant.parse(timestampStr);
+        } catch (Exception e) {
+            // Not ISO format, try other formats
+        }
+
+        // Try unix timestamp (seconds)
+        try {
+            long timestamp = Long.parseLong(timestampStr);
+            // If timestamp is too small to be milliseconds, assume it's seconds
+            if (timestamp < 31536000000L) { // ~1 year in milliseconds
+                return java.time.Instant.ofEpochSecond(timestamp);
+            } else {
+                return java.time.Instant.ofEpochMilli(timestamp);
+            }
+        } catch (NumberFormatException e) {
+            // Not a number
+        }
+
+        // Try other date formats
+        String[] patterns = {
+            "yyyy-MM-dd HH:mm:ss",
+            "yyyy-MM-dd'T'HH:mm:ss",
+            "yyyy/MM/dd HH:mm:ss",
+            "MM/dd/yyyy HH:mm:ss"
+        };
+
+        for (String pattern : patterns) {
+            try {
+                java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern(pattern);
+                java.time.LocalDateTime dateTime = java.time.LocalDateTime.parse(timestampStr, formatter);
+                return dateTime.atZone(java.time.ZoneId.systemDefault()).toInstant();
+            } catch (Exception e) {
+                // Try next format
+            }
+        }
+
+        return null; // All parsing attempts failed
+    }
+
+    /**
+     * Debug helper method to log all potential paths that might contain duration information
+     */
+    private void logAllPotentialDurationPaths() {
+        org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(VapiWebhookPayloadDTO.class);
+
+        // Log root level values
+        log.debug("Root-level durationMinutes field: {}", this.durationMinutes);
+        log.debug("Root-level durationSeconds field: {}", this.durationSeconds);
+        log.debug("Properties map contains durationMinutes: {}", properties.containsKey("durationMinutes"));
+        log.debug("Properties map durationMinutes value: {}", properties.get("durationMinutes"));
+
+        // Log nested values in message
+        if (this.message != null) {
+            log.debug("Message.durationMinutes: {}", this.message.getDurationMinutes());
+
+            if (this.message.getArtifact() != null) {
+                log.debug("Message.artifact.durationMinutes: {}", this.message.getArtifact().getDurationMinutes());
+            } else {
+                log.debug("Message.artifact is null");
+            }
+
+            // Log nested call timestamps if present
+            if (this.message.getCall() != null) {
+                log.debug("Message has call data but no timestamp information available");
+            } else {
+                log.debug("Message.call is null");
+            }
+        } else {
+            log.debug("Message object is null");
+        }
+
+        // Log nested values via getNestedValue
+        String[] durationPaths = {
+            "durationMinutes", "duration_minutes", "duration", 
+            "call.durationMinutes", "call.duration_minutes", "call.duration",
+            "artifact.durationMinutes", "artifact.duration_minutes", "artifact.duration",
+            "message.durationMinutes", "message.duration_minutes", "message.duration",
+            "message.artifact.durationMinutes", "message.artifact.duration_minutes", "message.artifact.duration"
+        };
+
+        for (String path : durationPaths) {
+            Object value = getNestedValue(path);
+            if (value != null) {
+                log.debug("Found value at path '{}': {}", path, value);
+            }
+        }
     }
 
 

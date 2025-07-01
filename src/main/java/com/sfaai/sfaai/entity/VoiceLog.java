@@ -23,6 +23,10 @@ public class VoiceLog {
         INITIATED, RINGING, IN_PROGRESS, COMPLETED, FAILED, CANCELLED
     }
 
+    public enum Provider {
+        VAPI, ELEVENLABS
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -30,9 +34,10 @@ public class VoiceLog {
     @Column(name = "external_call_id")
     private String externalCallId;
 
-    @NotBlank
+    @NotNull
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String provider;
+    private Provider provider;
 
     @Column(name = "phone_number")
     private String phoneNumber;
@@ -72,8 +77,12 @@ public class VoiceLog {
     private Agent agent;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assistant_id", nullable = false)
+    @JoinColumn(name = "assistant_id")
     private VapiAssistant vapiAssistant;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "elevenlabs_assistant_id")
+    private ElevenLabsAssistant elevenLabsAssistant;
 
     @Column(name = "metadata", columnDefinition = "TEXT")
     private String metadata;
