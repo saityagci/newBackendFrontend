@@ -10,6 +10,7 @@ import com.sfaai.sfaai.repository.ElevenLabsAssistantRepository;
 import com.sfaai.sfaai.service.ElevenLabsAssistantService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -30,8 +31,10 @@ public class ElevenLabsAssistantServiceImpl implements ElevenLabsAssistantServic
     private final ElevenLabsConfig elevenLabsConfig;
     private final RestTemplate restTemplate;
     private final ElevenLabsAssistantRepository assistantRepository;
+    @Qualifier("elevenLabsAssistantMapper")
     private final ElevenLabsAssistantMapper assistantMapper;
     private final ObjectMapper objectMapper;
+    
 
     @Override
     public ElevenLabsListAssistantsResponse getAllAssistantsFromApi() {
