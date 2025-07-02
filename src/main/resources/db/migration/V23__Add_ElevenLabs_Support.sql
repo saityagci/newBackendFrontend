@@ -20,8 +20,17 @@ ALTER TABLE voice_log
     REFERENCES elevenlabs_assistant(assistant_id);
 
 -- Make assistant_id nullable to support both providers
+-- First drop any existing not null constraint
 ALTER TABLE voice_log 
     ALTER COLUMN assistant_id DROP NOT NULL;
+
+-- Add a check constraint to ensure at least one assistant is set
+ALTER TABLE voice_log 
+    ADD CONSTRAINT check_assistant_set 
+    CHECK (
+        (assistant_id IS NOT NULL AND elevenlabs_assistant_id IS NULL) OR
+        (assistant_id IS NULL AND elevenlabs_assistant_id IS NOT NULL)
+    );
 
 -- Alter provider column to be an enum
 ALTER TABLE voice_log 

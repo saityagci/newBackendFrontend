@@ -63,10 +63,18 @@ public interface VoiceLogRepository extends JpaRepository<VoiceLog, Long> {
 
     /**
      * Find voice logs by provider
-     * @param provider The voice provider (e.g., "vapi", "elevenlabs")
+     * @param provider The voice provider (e.g., VAPI, ELEVENLABS)
      * @return List of voice logs for the provider
      */
-    List<VoiceLog> findByProvider(String provider);
+    List<VoiceLog> findByProvider(VoiceLog.Provider provider);
+
+    /**
+     * Find voice logs by provider with pagination
+     * @param provider The voice provider (e.g., VAPI, ELEVENLABS)
+     * @param pageable Pagination information
+     * @return Page of voice logs for the provider
+     */
+    Page<VoiceLog> findByProvider(VoiceLog.Provider provider, Pageable pageable);
 
     /**
      * Find voice logs by external call ID

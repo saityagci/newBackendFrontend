@@ -25,6 +25,10 @@ public class ElevenLabsAssistant {
     @JoinColumn(name = "client_id")
     private Client client;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "agent_id")
+    private Agent agent;
+
     @NotBlank
     @Column(nullable = false)
     private String name;

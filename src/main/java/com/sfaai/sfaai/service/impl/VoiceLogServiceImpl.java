@@ -3,10 +3,12 @@ package com.sfaai.sfaai.service.impl;
 
 import com.sfaai.sfaai.dto.VoiceLogCreateDTO;
 import com.sfaai.sfaai.dto.VoiceLogDTO;
+import com.sfaai.sfaai.entity.ElevenLabsAssistant;
 import com.sfaai.sfaai.entity.VapiAssistant;
 import com.sfaai.sfaai.entity.VoiceLog;
 import com.sfaai.sfaai.exception.ResourceNotFoundException;
 import com.sfaai.sfaai.mapper.VoiceLogMapper;
+import com.sfaai.sfaai.repository.ElevenLabsAssistantRepository;
 import com.sfaai.sfaai.repository.VapiAssistantRepository;
 import com.sfaai.sfaai.repository.VoiceLogRepository;
 import com.sfaai.sfaai.service.VoiceLogService;
@@ -27,11 +29,13 @@ public class VoiceLogServiceImpl implements VoiceLogService {
     private final VoiceLogMapper voiceLogMapper;
     private final VoiceLogRepository voiceLogRepository;
     private final VapiAssistantRepository vapiAssistantRepository;
+    private final ElevenLabsAssistantRepository elevenLabsAssistantRepository;
 
-    public VoiceLogServiceImpl(VoiceLogMapper voiceLogMapper, VoiceLogRepository voiceLogRepository, VapiAssistantRepository vapiAssistantRepository) {
+    public VoiceLogServiceImpl(VoiceLogMapper voiceLogMapper, VoiceLogRepository voiceLogRepository, VapiAssistantRepository vapiAssistantRepository, ElevenLabsAssistantRepository elevenLabsAssistantRepository) {
         this.voiceLogMapper = voiceLogMapper;
         this.voiceLogRepository = voiceLogRepository;
         this.vapiAssistantRepository = vapiAssistantRepository;
+        this.elevenLabsAssistantRepository = elevenLabsAssistantRepository;
     }
 
     @Override
@@ -98,18 +102,39 @@ public class VoiceLogServiceImpl implements VoiceLogService {
         // Create a new voice log entity from the DTO
         VoiceLog voiceLog = voiceLogMapper.createEntityFromDto(dto);
 
-        // Set the VapiAssistant relationship
-        if (dto.getAssistantId() != null) {
-            VapiAssistant assistant = vapiAssistantRepository.findById(dto.getAssistantId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Assistant not found: " + dto.getAssistantId()));
-            voiceLog.setVapiAssistant(assistant);
-        } else if (dto.getExternalAgentId() != null) {
-            // Fallback to externalAgentId if assistantId is not provided
-            VapiAssistant assistant = vapiAssistantRepository.findById(dto.getExternalAgentId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Assistant not found: " + dto.getExternalAgentId()));
-            voiceLog.setVapiAssistant(assistant);
+        // Handle different providers
+        VoiceLog.Provider provider = VoiceLog.Provider.valueOf(dto.getProvider().toUpperCase());
+        
+        if (provider == VoiceLog.Provider.VAPI) {
+            // Handle Vapi assistant
+            if (dto.getAssistantId() != null) {
+                VapiAssistant assistant = vapiAssistantRepository.findById(dto.getAssistantId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Vapi Assistant not found: " + dto.getAssistantId()));
+                voiceLog.setVapiAssistant(assistant);
+            } else if (dto.getExternalAgentId() != null) {
+                // Fallback to externalAgentId if assistantId is not provided
+                VapiAssistant assistant = vapiAssistantRepository.findById(dto.getExternalAgentId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Vapi Assistant not found: " + dto.getExternalAgentId()));
+                voiceLog.setVapiAssistant(assistant);
+            } else {
+                throw new IllegalArgumentException("Assistant ID must not be null for Vapi provider");
+            }
+        } else if (provider == VoiceLog.Provider.ELEVENLABS) {
+            // Handle ElevenLabs assistant
+            if (dto.getAssistantId() != null) {
+                ElevenLabsAssistant assistant = elevenLabsAssistantRepository.findById(dto.getAssistantId())
+                        .orElseThrow(() -> new ResourceNotFoundException("ElevenLabs Assistant not found: " + dto.getAssistantId()));
+                voiceLog.setElevenLabsAssistant(assistant);
+            } else if (dto.getExternalAgentId() != null) {
+                // Fallback to externalAgentId if assistantId is not provided
+                ElevenLabsAssistant assistant = elevenLabsAssistantRepository.findById(dto.getExternalAgentId())
+                        .orElseThrow(() -> new ResourceNotFoundException("ElevenLabs Assistant not found: " + dto.getExternalAgentId()));
+                voiceLog.setElevenLabsAssistant(assistant);
+            } else {
+                throw new IllegalArgumentException("Assistant ID must not be null for ElevenLabs provider");
+            }
         } else {
-            throw new IllegalArgumentException("Assistant ID must not be null");
+            throw new IllegalArgumentException("Unsupported provider: " + provider);
         }
 
         VoiceLog savedVoiceLog = voiceLogRepository.save(voiceLog);
