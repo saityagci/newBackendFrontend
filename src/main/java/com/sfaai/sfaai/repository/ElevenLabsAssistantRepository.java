@@ -23,4 +23,18 @@ public interface ElevenLabsAssistantRepository extends JpaRepository<ElevenLabsA
      * @return List of assistants using the specified voice
      */
     List<ElevenLabsAssistant> findByVoiceId(String voiceId);
+
+    /**
+     * Find assistants by agent ID
+     * @param agentId Agent ID
+     * @return List of assistants assigned to the specified agent
+     */
+    List<ElevenLabsAssistant> findByAgentId(Long agentId);
+
+    /**
+     * Find assistants by client ID
+     * @param clientId Client ID
+     * @return List of assistants assigned to the specified client
+     */
+    List<ElevenLabsAssistant> findByClientId(Long clientId);
 }

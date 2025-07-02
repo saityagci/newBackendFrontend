@@ -3,16 +3,21 @@ package com.sfaai.sfaai.service.impl;
 import com.sfaai.sfaai.dto.ClientCreateDTO;
 import com.sfaai.sfaai.dto.ClientDTO;
 import com.sfaai.sfaai.dto.VapiAssistantDTO;
+import com.sfaai.sfaai.dto.ElevenLabsAssistantDTO;
 import com.sfaai.sfaai.dto.VapiListAssistantsResponse;
 import com.sfaai.sfaai.entity.Client;
 import com.sfaai.sfaai.entity.VapiAssistant;
+import com.sfaai.sfaai.entity.ElevenLabsAssistant;
 import com.sfaai.sfaai.exception.ResourceNotFoundException;
 import com.sfaai.sfaai.mapper.ClientMapper;
 import com.sfaai.sfaai.mapper.VapiAssistantMapper;
+import com.sfaai.sfaai.mapper.ElevenLabsAssistantMapper;
 import com.sfaai.sfaai.repository.ClientRepository;
 import com.sfaai.sfaai.repository.VapiAssistantRepository;
+import com.sfaai.sfaai.repository.ElevenLabsAssistantRepository;
 import com.sfaai.sfaai.service.ClientService;
 import com.sfaai.sfaai.service.VapiAgentService;
+import com.sfaai.sfaai.service.ElevenLabsAssistantService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -36,10 +41,13 @@ public class ClientServiceImpl implements ClientService {
 
     private final ClientRepository clientRepository;
     private final VapiAssistantRepository vapiAssistantRepository;
+    private final ElevenLabsAssistantRepository elevenLabsAssistantRepository;
     private final ClientMapper clientMapper;
     private final VapiAssistantMapper vapiAssistantMapper;
+    private final ElevenLabsAssistantMapper elevenLabsAssistantMapper;
     private final PasswordEncoder passwordEncoder;
     private final VapiAgentService vapiAgentService;
+    private final ElevenLabsAssistantService elevenLabsAssistantService;
 
     /**
      * Create a new client
@@ -503,5 +511,195 @@ public class ClientServiceImpl implements ClientService {
         }
 
         return apiKey;
+    }
+
+    /**
+     * Assign an ElevenLabs assistant to a client
+     * @param clientId Client ID
+     * @param elevenLabsAssistantId ElevenLabs assistant ID
+     * @return Updated client DTO
+     */
+    @Override
+    @Transactional
+    public ClientDTO assignElevenLabsAssistant(Long clientId, String elevenLabsAssistantId) {
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + clientId));
+
+        // Get or create the assistant entity
+        ElevenLabsAssistant assistant = elevenLabsAssistantRepository.findById(elevenLabsAssistantId)
+                .orElseGet(() -> updateLocalElevenLabsAssistantFromApi(elevenLabsAssistantId));
+
+        if (assistant != null) {
+            // Set the client reference on the assistant
+            assistant.setClient(client);
+            
+            // Save the assistant first to ensure it exists
+            elevenLabsAssistantRepository.save(assistant);
+        }
+
+        Client updatedClient = clientRepository.save(client);
+        return clientMapper.toDto(updatedClient);
+    }
+
+    /**
+     * Unassign (remove) the ElevenLabs assistant from a client
+     * @param clientId Client ID
+     * @return Updated client DTO
+     */
+    @Override
+    @Transactional
+    public ClientDTO unassignElevenLabsAssistant(Long clientId) {
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + clientId));
+
+        // Find and unassign any ElevenLabs assistants
+        List<ElevenLabsAssistant> assistants = elevenLabsAssistantRepository.findByClientId(clientId);
+        for (ElevenLabsAssistant assistant : assistants) {
+            assistant.setClient(null);
+            elevenLabsAssistantRepository.save(assistant);
+        }
+
+        Client updatedClient = clientRepository.save(client);
+        return clientMapper.toDto(updatedClient);
+    }
+
+    /**
+     * Add an ElevenLabs assistant to a client's list of assistants
+     * @param clientId Client ID
+     * @param elevenLabsAssistantId ElevenLabs assistant ID
+     * @return Updated client DTO
+     */
+    @Override
+    @Transactional
+    public ClientDTO addElevenLabsAssistant(Long clientId, String elevenLabsAssistantId) {
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + clientId));
+
+        // Get or create the assistant entity
+        ElevenLabsAssistant assistant = elevenLabsAssistantRepository.findById(elevenLabsAssistantId)
+                .orElseGet(() -> updateLocalElevenLabsAssistantFromApi(elevenLabsAssistantId));
+
+        if (assistant != null) {
+            // Check if this assistant is already associated with this client
+            if (assistant.getClient() == null || !assistant.getClient().getId().equals(clientId)) {
+                // Set the client reference on the assistant
+                assistant.setClient(client);
+                
+                // Save the assistant
+                elevenLabsAssistantRepository.save(assistant);
+            }
+        }
+
+        Client updatedClient = clientRepository.save(client);
+        return clientMapper.toDto(updatedClient);
+    }
+
+    /**
+     * Remove an ElevenLabs assistant from a client's list of assistants
+     * @param clientId Client ID
+     * @param elevenLabsAssistantId ElevenLabs assistant ID
+     * @return Updated client DTO
+     */
+    @Override
+    @Transactional
+    public ClientDTO removeElevenLabsAssistant(Long clientId, String elevenLabsAssistantId) {
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + clientId));
+
+        // Find the assistant and remove the client association
+        ElevenLabsAssistant assistant = elevenLabsAssistantRepository.findById(elevenLabsAssistantId)
+                .orElse(null);
+
+        if (assistant != null && assistant.getClient() != null && assistant.getClient().getId().equals(clientId)) {
+            assistant.setClient(null);
+            elevenLabsAssistantRepository.save(assistant);
+        }
+
+        Client updatedClient = clientRepository.save(client);
+        return clientMapper.toDto(updatedClient);
+    }
+
+    /**
+     * Find all clients assigned to a specific ElevenLabs assistant
+     * @param assistantId The ElevenLabs assistant ID
+     * @return List of client DTOs assigned to the assistant
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<ClientDTO> findClientsByElevenLabsAssistantId(String assistantId) {
+        ElevenLabsAssistant assistant = elevenLabsAssistantRepository.findById(assistantId)
+                .orElse(null);
+
+        if (assistant == null || assistant.getClient() == null) {
+            return new ArrayList<>();
+        }
+
+        return List.of(clientMapper.toDto(assistant.getClient()));
+    }
+
+    /**
+     * Get all ElevenLabs assistants assigned to a client
+     * @param clientId The client ID
+     * @return List of ElevenLabsAssistantDTO objects assigned to the client
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<ElevenLabsAssistantDTO> getAssignedElevenLabsAssistants(Long clientId) {
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found with ID: " + clientId));
+
+        // Get all assistants from the client's entity relationship
+        List<ElevenLabsAssistantDTO> assistants = elevenLabsAssistantRepository.findByClientId(clientId).stream()
+                .map(elevenLabsAssistantMapper::toDto)
+                .collect(Collectors.toList());
+
+        return assistants;
+    }
+
+    /**
+     * Update or save a local copy of an ElevenLabs assistant from the ElevenLabs API
+     * @param assistantId The assistant ID to update
+     * @return The updated ElevenLabsAssistant entity
+     */
+    private ElevenLabsAssistant updateLocalElevenLabsAssistantFromApi(String assistantId) {
+        try {
+            // Check if we already have this assistant
+            ElevenLabsAssistant existingAssistant = elevenLabsAssistantRepository.findById(assistantId).orElse(null);
+
+            // If not found or it's been a while since updated, fetch from ElevenLabs API
+            if (existingAssistant == null) {
+                // Get from ElevenLabs API
+                ElevenLabsAssistantDTO assistantDTO = null;
+                try {
+                    assistantDTO = elevenLabsAssistantService.getAssistant(assistantId);
+                } catch (Exception e) {
+                    // Log the error but continue, we'll create a placeholder assistant
+                    log.error("Error fetching assistant from ElevenLabs API: {}", e.getMessage());
+                }
+
+                if (assistantDTO != null) {
+                    // Convert to entity and save
+                    ElevenLabsAssistant newAssistant = elevenLabsAssistantMapper.toEntity(assistantDTO);
+                    return elevenLabsAssistantRepository.save(newAssistant);
+                } else {
+                    // Create a placeholder assistant if we can't fetch from API
+                    ElevenLabsAssistant placeholderAssistant = ElevenLabsAssistant.builder()
+                            .assistantId(assistantId)
+                            .name("Unknown ElevenLabs Assistant")
+                            .build();
+                    return elevenLabsAssistantRepository.save(placeholderAssistant);
+                }
+            }
+
+            return existingAssistant;
+        } catch (Exception e) {
+            log.error("Error updating local ElevenLabs assistant from API: {}", e.getMessage());
+            // Create a placeholder assistant as fallback
+            ElevenLabsAssistant placeholderAssistant = ElevenLabsAssistant.builder()
+                    .assistantId(assistantId)
+                    .name("Unknown ElevenLabs Assistant")
+                    .build();
+            return elevenLabsAssistantRepository.save(placeholderAssistant);
+        }
     }
 }

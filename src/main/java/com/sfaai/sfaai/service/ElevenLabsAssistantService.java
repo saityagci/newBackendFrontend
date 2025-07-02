@@ -2,6 +2,7 @@ package com.sfaai.sfaai.service;
 
 import com.sfaai.sfaai.dto.ElevenLabsAssistantDTO;
 import com.sfaai.sfaai.dto.ElevenLabsListAssistantsResponse;
+import com.sfaai.sfaai.dto.ElevenLabsAssistantDetailResponse;
 
 import java.util.List;
 
@@ -34,4 +35,11 @@ public interface ElevenLabsAssistantService {
      * @return Number of assistants synchronized
      */
     int syncAllAssistants();
+
+    /**
+     * Get full details for a single ElevenLabs assistant by ID from the API
+     * @param assistantId Assistant ID
+     * @return Full assistant details DTO
+     */
+    ElevenLabsAssistantDetailResponse getAssistantDetailsFromApi(String assistantId);
 }

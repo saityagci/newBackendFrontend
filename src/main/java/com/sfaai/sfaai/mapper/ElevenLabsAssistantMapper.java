@@ -17,10 +17,20 @@ public class ElevenLabsAssistantMapper {
         ElevenLabsAssistantDTO dto = new ElevenLabsAssistantDTO();
         dto.setAssistantId(entity.getAssistantId());
         dto.setName(entity.getName());
-        dto.setDescription(entity.getDescription());
+        dto.setFirstMessage(entity.getFirstMessage());
+        dto.setLanguage(entity.getLanguage());
+        dto.setVoiceProvider(entity.getVoiceProvider());
         dto.setVoiceId(entity.getVoiceId());
-        dto.setVoiceName(entity.getVoiceName());
-        dto.setModelId(entity.getModelId());
+        dto.setModelProvider(entity.getModelProvider());
+        dto.setModelName(entity.getModelName());
+        dto.setTranscriberProvider(entity.getTranscriberProvider());
+        dto.setTranscriberModel(entity.getTranscriberModel());
+        dto.setTranscriberLanguage(entity.getTranscriberLanguage());
+        dto.setPrompt(entity.getPrompt());
+        dto.setKnowledgeBaseIds(entity.getKnowledgeBaseIds());
+        dto.setConversationConfig(entity.getConversationConfig());
+        dto.setSyncStatus(entity.getSyncStatus());
+        dto.setRawData(entity.getRawData());
         return dto;
     }
 
@@ -32,10 +42,20 @@ public class ElevenLabsAssistantMapper {
         ElevenLabsAssistant entity = new ElevenLabsAssistant();
         entity.setAssistantId(dto.getAssistantId());
         entity.setName(dto.getName());
-        entity.setDescription(dto.getDescription());
+        entity.setFirstMessage(dto.getFirstMessage());
+        entity.setLanguage(dto.getLanguage());
+        entity.setVoiceProvider(dto.getVoiceProvider());
         entity.setVoiceId(dto.getVoiceId());
-        entity.setVoiceName(dto.getVoiceName());
-        entity.setModelId(dto.getModelId());
+        entity.setModelProvider(dto.getModelProvider());
+        entity.setModelName(dto.getModelName());
+        entity.setTranscriberProvider(dto.getTranscriberProvider());
+        entity.setTranscriberModel(dto.getTranscriberModel());
+        entity.setTranscriberLanguage(dto.getTranscriberLanguage());
+        entity.setPrompt(dto.getPrompt());
+        entity.setKnowledgeBaseIds(dto.getKnowledgeBaseIds());
+        entity.setConversationConfig(dto.getConversationConfig());
+        entity.setSyncStatus(dto.getSyncStatus());
+        entity.setRawData(dto.getRawData());
         entity.setCreatedAt(LocalDateTime.now());
         entity.setUpdatedAt(LocalDateTime.now());
         return entity;

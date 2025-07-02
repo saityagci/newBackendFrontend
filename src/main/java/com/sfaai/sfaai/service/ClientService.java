@@ -3,6 +3,7 @@ package com.sfaai.sfaai.service;
 import com.sfaai.sfaai.dto.ClientCreateDTO;
 import com.sfaai.sfaai.dto.ClientDTO;
 import com.sfaai.sfaai.dto.VapiAssistantDTO;
+import com.sfaai.sfaai.dto.ElevenLabsAssistantDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -133,4 +134,49 @@ public interface ClientService {
      * @return List of VapiAssistantDTO objects assigned to the client
      */
     List<VapiAssistantDTO> getAssignedVapiAssistants(Long clientId);
+
+    /**
+     * Assign an ElevenLabs assistant to a client
+     * @param clientId Client ID
+     * @param elevenLabsAssistantId ElevenLabs assistant ID
+     * @return Updated client DTO
+     */
+    ClientDTO assignElevenLabsAssistant(Long clientId, String elevenLabsAssistantId);
+
+    /**
+     * Unassign (remove) the ElevenLabs assistant from a client
+     * @param clientId Client ID
+     * @return Updated client DTO with elevenLabsAssistantId set to null
+     */
+    ClientDTO unassignElevenLabsAssistant(Long clientId);
+
+    /**
+     * Add an ElevenLabs assistant to a client's list of assistants
+     * @param clientId Client ID
+     * @param elevenLabsAssistantId ElevenLabs assistant ID
+     * @return Updated client DTO
+     */
+    ClientDTO addElevenLabsAssistant(Long clientId, String elevenLabsAssistantId);
+
+    /**
+     * Remove an ElevenLabs assistant from a client's list of assistants
+     * @param clientId Client ID
+     * @param elevenLabsAssistantId ElevenLabs assistant ID
+     * @return Updated client DTO
+     */
+    ClientDTO removeElevenLabsAssistant(Long clientId, String elevenLabsAssistantId);
+
+    /**
+     * Find all clients assigned to a specific ElevenLabs assistant
+     * @param assistantId The ElevenLabs assistant ID
+     * @return List of client DTOs assigned to the assistant
+     */
+    List<ClientDTO> findClientsByElevenLabsAssistantId(String assistantId);
+
+    /**
+     * Get all ElevenLabs assistants assigned to a client
+     * @param clientId The client ID
+     * @return List of ElevenLabsAssistantDTO objects assigned to the client
+     */
+    List<ElevenLabsAssistantDTO> getAssignedElevenLabsAssistants(Long clientId);
 }

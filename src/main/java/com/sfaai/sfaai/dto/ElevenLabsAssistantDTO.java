@@ -23,10 +23,21 @@ public class ElevenLabsAssistantDTO {
 
     private String name;
 
-    private String description;
-
-    @JsonProperty("voice_id")
+    private String firstMessage;
+    private String language;
+    private String voiceProvider;
     private String voiceId;
+    private String modelProvider;
+    private String modelName;
+    private String transcriberProvider;
+    private String transcriberModel;
+    private String transcriberLanguage;
+    private String prompt;
+    private String knowledgeBaseIds;
+    private String conversationConfig;
+    private String syncStatus;
+
+    private String description;
 
     @JsonProperty("voice_name")
     private String voiceName;

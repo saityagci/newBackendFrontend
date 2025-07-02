@@ -108,4 +108,30 @@ public class AdminElevenLabsController {
             return ResponseEntity.status(500).body(result);
         }
     }
+
+    /**
+     * Manually trigger synchronization of all ElevenLabs assistants (verbose summary)
+     * @return Sync result summary
+     */
+    @PostMapping("/sync/assistants/verbose")
+    public ResponseEntity<Map<String, Object>> syncAllAssistantsVerbose() {
+        log.info("Manual ElevenLabs assistant sync triggered via API");
+        long start = System.currentTimeMillis();
+        com.sfaai.sfaai.service.impl.ElevenLabsAssistantServiceImpl.SyncSummary summary =
+                ((com.sfaai.sfaai.service.impl.ElevenLabsAssistantServiceImpl) elevenLabsAssistantService).syncAllAssistantsWithSummary();
+        long duration = System.currentTimeMillis() - start;
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", summary.errors == 0);
+        result.put("message", summary.errors == 0 ? "Successfully synchronized ElevenLabs assistants" : "Errors occurred during sync");
+        result.put("fetched", summary.fetched);
+        result.put("updated", summary.updated);
+        result.put("skipped", summary.skipped);
+        result.put("errors", summary.errors);
+        result.put("updatedIds", summary.updatedIds);
+        result.put("skippedIds", summary.skippedIds);
+        result.put("errorIds", summary.errorIds);
+        result.put("durationMs", summary.durationMs);
+        log.info("Manual sync result: {} fetched, {} updated, {} skipped, {} errors, {} ms", summary.fetched, summary.updated, summary.skipped, summary.errors, summary.durationMs);
+        return ResponseEntity.ok(result);
+    }
 }

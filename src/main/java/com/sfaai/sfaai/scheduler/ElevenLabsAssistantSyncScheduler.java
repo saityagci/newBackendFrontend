@@ -60,7 +60,8 @@ public class ElevenLabsAssistantSyncScheduler {
      */
     @Scheduled(fixedDelayString = "${elevenlabs.sync.interval:600000}", initialDelay = 600000)
     public void scheduledSync() {
-        log.info("Starting scheduled ElevenLabs assistant synchronization (interval: {} ms)", syncInterval);
+        String now = java.time.ZonedDateTime.now().toString();
+        log.info("ElevenLabs scheduled sync running at {}", now);
         int maxRetries = 3;
         int retryCount = 0;
         boolean success = false;
@@ -70,15 +71,26 @@ public class ElevenLabsAssistantSyncScheduler {
                     log.info("Retry attempt {} of {}", retryCount, maxRetries);
                     Thread.sleep(5000L * (1L << (retryCount - 1)));
                 }
-                int syncCount = elevenLabsAssistantService.syncAllAssistants();
-                log.info("Scheduled sync completed. Synchronized {} assistants", syncCount);
+                int fetched = 0;
+                int updated = 0;
+                try {
+                    // Fetch count for logging
+                    com.sfaai.sfaai.dto.ElevenLabsListAssistantsResponse apiAssistants = elevenLabsAssistantService.getAllAssistantsFromApi();
+                    if (apiAssistants != null && apiAssistants.getAssistants() != null) {
+                        fetched = apiAssistants.getAssistants().size();
+                    }
+                } catch (Exception e) {
+                    log.error("Error fetching assistants from ElevenLabs API", e);
+                }
+                updated = elevenLabsAssistantService.syncAllAssistants();
+                log.info("ElevenLabs sync: {} assistants fetched from API, {} saved/updated", fetched, updated);
+                if (updated == 0) {
+                    log.info("No assistants updated; all records up-to-date");
+                }
                 success = true;
-            } catch (InterruptedException e) {
-                log.warn("Sync thread interrupted: {}", e.getMessage());
-                Thread.currentThread().interrupt();
-                break;
             } catch (Exception e) {
                 retryCount++;
+                log.error("Exception during scheduled ElevenLabs assistant sync (attempt {}):", retryCount, e);
                 if (retryCount >= maxRetries) {
                     log.error("Error during scheduled ElevenLabs assistant sync after {} retries: {}", maxRetries, e.getMessage(), e);
                 } else {
