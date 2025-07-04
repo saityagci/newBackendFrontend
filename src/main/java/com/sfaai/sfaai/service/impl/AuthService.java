@@ -38,6 +38,9 @@ public class AuthService {
     }
 
     public LoginResponse register(RegisterRequest request) {
+        // Debug logging
+        System.out.println("DEBUG: RegisterRequest received - fullName: '" + request.getFullName() + "', email: '" + request.getEmail() + "'");
+        
         // Generate a unique API key for the new client
         String apiKey = generateApiKey();
 
@@ -71,6 +74,9 @@ public class AuthService {
                 .role(role) // Role without ROLE_ prefix
                 .apiKey(apiKey) // Add the generated API key
                 .build();
+
+        // Debug logging
+        System.out.println("DEBUG: Client entity created - fullName: '" + client.getFullName() + "', email: '" + client.getEmail() + "'");
 
         Client savedClient = clientRepository.save(client);
 

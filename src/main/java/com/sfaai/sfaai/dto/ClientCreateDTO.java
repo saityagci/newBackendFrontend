@@ -40,7 +40,10 @@ public class ClientCreateDTO {
 
     // Custom validation for password matching
     @AssertTrue(message = "Passwords do not match")
-    private boolean isPasswordMatching() {
+    private boolean passwordMatching;
+
+    // Method to validate password matching
+    public boolean isPasswordMatching() {
         return password != null && password.equals(confirmPassword);
     }
 }

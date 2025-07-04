@@ -2,6 +2,7 @@ package com.sfaai.sfaai.controller;
 
 import com.sfaai.sfaai.dto.ClientCreateDTO;
 import com.sfaai.sfaai.dto.ClientDTO;
+import com.sfaai.sfaai.dto.SimpleUserRequest;
 import com.sfaai.sfaai.service.ClientService;
 import com.sfaai.sfaai.service.SecurityService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -40,6 +41,39 @@ public class ClientController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<ClientDTO> create(@Valid @RequestBody ClientCreateDTO dto) {
+        ClientDTO created = clientService.save(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    /**
+     * Create a new client/user (simple version for testing)
+     * @param request Simple user creation request
+     * @return Created client DTO
+     */
+    @Operation(summary = "Create a new user (simple)", description = "Creates a new user in the system with minimal validation",
+            responses = {
+                @ApiResponse(responseCode = "201", description = "Client created successfully"),
+                @ApiResponse(responseCode = "400", description = "Invalid input data")
+            })
+    @PostMapping("/simple")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ClientDTO> createSimple(@RequestBody SimpleUserRequest request) {
+        System.out.println("DEBUG: Received request - fullName: " + request.getFullName() + ", email: " + request.getEmail());
+        
+        ClientCreateDTO dto = ClientCreateDTO.builder()
+                .fullName(request.getFullName())
+                .email(request.getEmail())
+                .password(request.getPassword())
+                .confirmPassword(request.getPassword())
+                .phone(request.getPhone())
+                .role(request.getRole() != null ? request.getRole() : "USER")
+                .agree(true)
+                .passwordMatching(true)
+                .build();
+        
+        System.out.println("DEBUG: Created DTO - fullName: " + dto.getFullName() + ", email: " + dto.getEmail());
+        
         ClientDTO created = clientService.save(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }

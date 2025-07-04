@@ -35,6 +35,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+import java.util.Spliterators;
 
 /**
  * Implementation of ElevenLabs voice log service
@@ -489,7 +492,8 @@ public class ElevenLabsVoiceLogServiceImpl implements ElevenLabsVoiceLogService 
                             detailedTranscript.length(), detailedTranscript.substring(0, Math.min(100, detailedTranscript.length())) + "...");
                 } else {
                     log.warn("No detailed transcript found in detailed conversation either. Available fields: {}", 
-                             detailedConversation.fieldNames().toString());
+                             StreamSupport.stream(Spliterators.spliteratorUnknownSize(detailedConversation.fieldNames(), 0), false)
+                                 .collect(Collectors.toList()));
                 }
                 
                 // Extract timestamps from detailed conversation if not already found
