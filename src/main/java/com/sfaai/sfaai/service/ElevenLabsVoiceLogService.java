@@ -54,6 +54,12 @@ public interface ElevenLabsVoiceLogService {
     SyncSummary manualSync();
 
     /**
+     * Force update transcript format for all existing ElevenLabs voice logs
+     * Converts [agent] to AI: and [user] to User:
+     */
+    SyncSummary forceUpdateTranscriptFormat();
+
+    /**
      * Summary of sync operation results
      */
     class SyncSummary {

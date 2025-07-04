@@ -182,39 +182,35 @@ public class ElevenLabsVoiceLogController {
      */
     @PostMapping("/sync")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(
-        summary = "Sync ElevenLabs voice logs",
-        description = "Manually triggers synchronization of voice logs from ElevenLabs API"
-    )
-    @ApiResponses({
-        @ApiResponse(
-            responseCode = "200",
-            description = "Sync completed successfully",
-            content = @Content(
-                mediaType = "application/json",
-                schema = @Schema(implementation = Map.class)
-            )
-        ),
+    @Operation(summary = "Manually sync voice logs from ElevenLabs", description = "Triggers a manual synchronization of voice logs from ElevenLabs API")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Sync completed successfully"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
         @ApiResponse(responseCode = "403", description = "Access denied")
     })
-    public ResponseEntity<Map<String, Object>> syncElevenLabsVoiceLogs() {
+    public ResponseEntity<ElevenLabsVoiceLogService.SyncSummary> syncElevenLabsVoiceLogs() {
         log.info("Manual ElevenLabs voice logs sync triggered via API");
         
         ElevenLabsVoiceLogService.SyncSummary summary = elevenLabsVoiceLogService.manualSync();
         
-        Map<String, Object> result = Map.of(
-            "success", summary.errors == 0,
-            "message", summary.errors == 0 ? "Successfully synchronized ElevenLabs voice logs" : "Errors occurred during sync",
-            "fetched", summary.fetched,
-            "updated", summary.updated,
-            "skipped", summary.skipped,
-            "errors", summary.errors,
-            "durationMs", summary.durationMs
-        );
-        
         log.info("Manual sync result: {} fetched, {} updated, {} skipped, {} errors, {} ms", 
                 summary.fetched, summary.updated, summary.skipped, summary.errors, summary.durationMs);
         
+        return ResponseEntity.ok(summary);
+    }
+
+    @PostMapping("/force-update-format")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Force update transcript format", description = "Updates all existing ElevenLabs voice logs to use AI:/User: format instead of [agent]/[user]")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Format update completed successfully"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Access denied")
+    })
+    public ResponseEntity<ElevenLabsVoiceLogService.SyncSummary> forceUpdateTranscriptFormat() {
+        log.info("Force update transcript format requested for ElevenLabs voice logs");
+        ElevenLabsVoiceLogService.SyncSummary result = elevenLabsVoiceLogService.forceUpdateTranscriptFormat();
+        log.info("Force update format result: {} updated, {} errors", result.updated, result.errors);
         return ResponseEntity.ok(result);
     }
 } 

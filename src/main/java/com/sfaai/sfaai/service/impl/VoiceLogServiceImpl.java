@@ -387,10 +387,19 @@ public class VoiceLogServiceImpl implements VoiceLogService {
                 }
 
                 // First webhook created the log, subsequent webhooks should update if they have important data or a transcript
-                if (!hasImportantUpdates && (dto.getTranscript() == null || dto.getTranscript().isEmpty())) {
+                // For ElevenLabs, we want to update transcript even if it's the only new data
+                boolean hasTranscript = dto.getTranscript() != null && !dto.getTranscript().isEmpty();
+                
+                if (!hasImportantUpdates && !hasTranscript) {
                     log.info("Skipping update for external call ID {} as webhook has no important updates or transcript", externalCallId);
                     // Skip updating if no important data or transcript is provided in this webhook
                     return voiceLogMapper.toDto(existingLog);
+                }
+                
+                // If we have a transcript, consider it an important update
+                if (hasTranscript) {
+                    hasImportantUpdates = true;
+                    log.info("Webhook contains transcript, treating as important update");
                 }
 
                 log.info("Updating existing voice log ID {} with new data", existingLog.getId());

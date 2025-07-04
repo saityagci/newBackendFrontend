@@ -1,0 +1,211 @@
+{
+  "agent_id": "agent_01jz40wdpkexvav81an03q73ea",
+  "conversation_id": "conv_01jz9gtb01e0waeyzabjxzgw75",
+  "status": "done",
+  "transcript": [
+    {
+      "role": "agent",
+      "message": "Hello! How can I help you today?",
+      "tool_calls": [],
+      "tool_results": [],
+      "feedback": null,
+      "llm_override": null,
+      "time_in_call_secs": 0,
+      "conversation_turn_metrics": null,
+      "rag_retrieval_info": null,
+      "llm_usage": null,
+      "interrupted": false,
+      "original_message": null,
+      "source_medium": null
+    },
+    {
+      "role": "user",
+      "message": "Hello, how are you?",
+      "tool_calls": [],
+      "tool_results": [],
+      "feedback": null,
+      "llm_override": null,
+      "time_in_call_secs": 3,
+      "conversation_turn_metrics": null,
+      "rag_retrieval_info": null,
+      "llm_usage": null,
+      "interrupted": false,
+      "original_message": null,
+      "source_medium": "audio"
+    },
+    {
+      "role": "agent",
+      "message": "I am doing well, thank you for asking! How can I assist you with your task today?...",
+      "tool_calls": [],
+      "tool_results": [],
+      "feedback": null,
+      "llm_override": null,
+      "time_in_call_secs": 5,
+      "conversation_turn_metrics": null,
+      "rag_retrieval_info": null,
+      "llm_usage": {
+        "model_usage": {
+          "gemini-2.0-flash": {
+            "input": {
+              "tokens": 418,
+              "price": 0.000041800000000000006
+            },
+            "input_cache_read": {
+              "tokens": 0,
+              "price": 0
+            },
+            "input_cache_write": {
+              "tokens": 0,
+              "price": 0
+            },
+            "output_total": {
+              "tokens": 21,
+              "price": 0.000008400000000000001
+            }
+          }
+        }
+      },
+      "interrupted": true,
+      "original_message": "I am doing well, thank you for asking! How can I assist you with your task today?\n",
+      "source_medium": null
+    }
+  ],
+  "metadata": {
+    "start_time_unix_secs": 1751592545,
+    "accepted_time_unix_secs": 1751592546,
+    "call_duration_secs": 12,
+    "cost": 80,
+    "deletion_settings": {
+      "deletion_time_unix_secs": null,
+      "deleted_logs_at_time_unix_secs": null,
+      "deleted_audio_at_time_unix_secs": null,
+      "deleted_transcript_at_time_unix_secs": null,
+      "delete_transcript_and_pii": false,
+      "delete_audio": false
+    },
+    "feedback": {
+      "overall_score": null,
+      "likes": 0,
+      "dislikes": 0
+    },
+    "authorization_method": "signed_url",
+    "charging": {
+      "dev_discount": false,
+      "is_burst": false,
+      "tier": "pro",
+      "llm_usage": {
+        "irreversible_generation": {
+          "model_usage": {
+            "gemini-2.0-flash": {
+              "input": {
+                "tokens": 418,
+                "price": 0.000041800000000000006
+              },
+              "input_cache_read": {
+                "tokens": 0,
+                "price": 0
+              },
+              "input_cache_write": {
+                "tokens": 0,
+                "price": 0
+              },
+              "output_total": {
+                "tokens": 21,
+                "price": 0.000008400000000000001
+              }
+            }
+          }
+        },
+        "initiated_generation": {
+          "model_usage": {
+            "gemini-2.0-flash": {
+              "input": {
+                "tokens": 418,
+                "price": 0.000041800000000000006
+              },
+              "input_cache_read": {
+                "tokens": 0,
+                "price": 0
+              },
+              "input_cache_write": {
+                "tokens": 0,
+                "price": 0
+              },
+              "output_total": {
+                "tokens": 21,
+                "price": 0.000008400000000000001
+              }
+            }
+          }
+        }
+      },
+      "llm_price": 0.00005020000000000001,
+      "llm_charge": 2,
+      "call_charge": 78
+    },
+    "phone_call": {
+      "direction": "inbound",
+      "phone_number_id": "phnum_01jz9gs6cqec8sfdn8qp75h0e6",
+      "agent_number": "+18565883248",
+      "external_number": "+13476342847",
+      "type": "twilio",
+      "stream_sid": "MZba657d0065f7f702317c75f7d457e807",
+      "call_sid": "CA087d4071f6e5c5e5a58fed1b81991653"
+    },
+    "batch_call": null,
+    "termination_reason": "Client disconnected: 1005",
+    "error": null,
+    "main_language": "en",
+    "rag_usage": null,
+    "text_only": false,
+    "features_usage": {
+      "language_detection": {
+        "enabled": false,
+        "used": false
+      },
+      "transfer_to_agent": {
+        "enabled": false,
+        "used": false
+      },
+      "transfer_to_number": {
+        "enabled": false,
+        "used": false
+      },
+      "multivoice": {
+        "enabled": false,
+        "used": false
+      },
+      "pii_zrm_workspace": false,
+      "pii_zrm_agent": false
+    },
+    "eleven_assistant": {
+      "is_eleven_assistant": false
+    }
+  },
+  "analysis": {
+    "evaluation_criteria_results": {},
+    "data_collection_results": {},
+    "call_successful": "success",
+    "transcript_summary": "The agent greets the user and inquires about how it can help. The user responds with a greeting, and the agent reiterates its offer to assist.\n"
+  },
+  "conversation_initiation_client_data": {
+    "conversation_config_override": {
+      "tts": null,
+      "conversation": null,
+      "agent": null
+    },
+    "custom_llm_extra_body": {},
+    "dynamic_variables": {
+      "system__agent_id": "agent_01jz40wdpkexvav81an03q73ea",
+      "system__caller_id": "+13476342847",
+      "system__time_utc": "2025-07-04T01:29:17.794534+00:00",
+      "system__call_sid": "CA087d4071f6e5c5e5a58fed1b81991653",
+      "system__called_number": "+18565883248",
+      "system__conversation_id": "conv_01jz9gtb01e0waeyzabjxzgw75",
+      "system__call_duration_secs": 12
+    }
+  },
+  "has_audio": true,
+  "has_user_audio": true,
+  "has_response_audio": true
+} 
