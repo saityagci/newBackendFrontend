@@ -9,7 +9,10 @@ import com.sfaai.sfaai.service.AudioStorageService;
 import com.sfaai.sfaai.service.VoiceLogService;
 import com.sfaai.sfaai.util.WebhookSignatureVerifier;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +22,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/voicelogs")
@@ -46,6 +51,33 @@ public class VoiceLogController {
         VoiceLogDTO saved = voiceLogService.createVoiceLog(dto);
         log.debug("Created voice log with ID: {}", saved.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+    }
+
+    /**
+     * Get all voice logs for a specific client
+     * @param clientId Client ID
+     * @return List of voice log DTOs for the client
+     */
+    @GetMapping("/client/{clientId}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
+    @Operation(
+        summary = "Get voice logs by client ID",
+        description = "Retrieves all voice logs for a specific client from both VAPI and ElevenLabs providers"
+    )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully retrieved voice logs",
+            content = @Content(schema = @Schema(implementation = VoiceLogDTO.class))
+        ),
+        @ApiResponse(responseCode = "404", description = "Client not found"),
+        @ApiResponse(responseCode = "403", description = "Access denied")
+    })
+    public ResponseEntity<List<VoiceLogDTO>> getVoiceLogsByClientId(@PathVariable Long clientId) {
+        log.info("Retrieving voice logs for client ID: {}", clientId);
+        List<VoiceLogDTO> voiceLogs = voiceLogService.getVoiceLogsByClientId(clientId);
+        log.info("Found {} voice logs for client ID: {}", voiceLogs.size(), clientId);
+        return ResponseEntity.ok(voiceLogs);
     }
 
     /**

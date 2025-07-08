@@ -6,9 +6,12 @@ import com.google.common.util.concurrent.RateLimiter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import jakarta.validation.constraints.Positive;
 import org.springframework.validation.annotation.Validated;
 import java.util.concurrent.TimeUnit;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 /**
  * Configuration for API rate limiting
@@ -50,19 +53,29 @@ public class RateLimitingConfig {
 
     /**
      * Creates a RateLimiter factory method for per-client rate limiters
+     * Higher limits for development environment (localhost)
      * @return Function to create new rate limiters
      */
     @Bean
     public java.util.function.Supplier<RateLimiter> rateLimiterSupplier() {
+        if (isLocalEnvironment()) {
+            // Return a very high rate limit for local development (1000 requests per minute)
+            return () -> RateLimiter.create(1000 / 60.0);
+        }
         return () -> RateLimiter.create(limit / 60.0);
     }
 
     /**
      * Default RateLimiter bean for general use
+     * Higher limits for development environment (localhost)
      * @return Default RateLimiter instance
      */
     @Bean
     public RateLimiter defaultRateLimiter() {
+        if (isLocalEnvironment()) {
+            // Return a very high rate limit for local development (1000 requests per minute)
+            return RateLimiter.create(1000 / 60.0);
+        }
         return RateLimiter.create(limit / 60.0);
     }
 
@@ -71,6 +84,24 @@ public class RateLimitingConfig {
      */
     @Bean
     public boolean isRateLimitingEnabled() {
+        // Optionally disable rate limiting completely in local development
+        if (isLocalEnvironment()) {
+            return false; // Disable rate limiting entirely for local development
+        }
         return enabled;
+    }
+
+    /**
+     * Helper method to determine if running in local development environment
+     * @return true if running on localhost
+     */
+    private boolean isLocalEnvironment() {
+        try {
+            // Check if running on localhost
+            String hostAddress = InetAddress.getLocalHost().getHostAddress();
+            return hostAddress.startsWith("127.") || hostAddress.equals("::1") || hostAddress.equals("0:0:0:0:0:0:0:1");
+        } catch (UnknownHostException e) {
+            return false;
+        }
     }
 }

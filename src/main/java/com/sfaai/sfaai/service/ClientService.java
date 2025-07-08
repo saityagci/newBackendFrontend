@@ -39,13 +39,15 @@ public interface ClientService {
      * @param page Page number (zero-based)
      * @param size Page size
      * @return List of client DTOs for the requested page
+     * @deprecated Use {@link #findAll(Pageable)} instead for paginated responses
      */
+    @Deprecated
     List<ClientDTO> findAll(int page, int size);
 
     /**
      * Find all clients with pagination
      * @param pageable Pagination information
-     * @return Page of client DTOs
+     * @return Page of client DTOs with pagination metadata (total elements, total pages, etc.)
      */
     Page<ClientDTO> findAll(Pageable pageable);
 

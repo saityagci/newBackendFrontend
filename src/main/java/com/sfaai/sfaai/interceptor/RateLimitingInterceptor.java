@@ -5,6 +5,7 @@ import com.google.common.util.concurrent.RateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -14,6 +15,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
  */
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class RateLimitingInterceptor implements HandlerInterceptor {
 
     private final Cache<String, RateLimiter> rateLimiterCache;
@@ -26,6 +28,7 @@ public class RateLimitingInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         if (!rateLimitingEnabled) {
+            log.debug("Rate limiting is disabled - allowing request");
             return true;
         }
 
@@ -35,8 +38,12 @@ public class RateLimitingInterceptor implements HandlerInterceptor {
         // Get or create rate limiter for this client
         RateLimiter rateLimiter = rateLimiterCache.get(clientId, k -> defaultRateLimiter);
 
+        // Log rate limit info in development
+        log.debug("Rate limit for client {}: {} requests/sec", clientId, rateLimiter.getRate());
+
         // Try to acquire permit
         if (!rateLimiter.tryAcquire()) {
+            log.warn("Rate limit exceeded for client {}: {} requests/sec", clientId, rateLimiter.getRate());
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.getWriter().write("Rate limit exceeded. Please try again later.");
             return false;

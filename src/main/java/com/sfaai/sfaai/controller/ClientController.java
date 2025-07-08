@@ -12,10 +12,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -91,10 +94,10 @@ public class ClientController {
             })
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<ClientDTO>> all(
+    public ResponseEntity<Page<ClientDTO>> all(
             @RequestParam(required = false, defaultValue = "0") int page,
             @RequestParam(required = false, defaultValue = "20") int size) {
-        return ResponseEntity.ok(clientService.findAll(page, size));
+        return ResponseEntity.ok(clientService.findAll(PageRequest.of(page, size)));
     }
 
     /**
@@ -136,6 +139,30 @@ public class ClientController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         clientService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Get the currently authenticated user's information
+     * @param userDetails The authenticated user details
+     * @return The client DTO for the authenticated user
+     */
+    @Operation(summary = "Get current user", description = "Retrieves the currently authenticated user's information",
+            responses = {
+                @ApiResponse(responseCode = "200", description = "Current user retrieved successfully",
+                        content = @Content(schema = @Schema(implementation = ClientDTO.class))),
+                @ApiResponse(responseCode = "404", description = "User not found"),
+                @ApiResponse(responseCode = "401", description = "Not authenticated")
+            })
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ClientDTO> getCurrentUser(@org.springframework.security.core.annotation.AuthenticationPrincipal UserDetails userDetails) {
+        String email = userDetails.getUsername();
+        try {
+            ClientDTO user = clientService.findByEmail(email);
+            return ResponseEntity.ok(user);
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
 }

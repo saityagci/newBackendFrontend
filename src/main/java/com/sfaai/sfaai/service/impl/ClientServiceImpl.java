@@ -123,9 +123,11 @@ public class ClientServiceImpl implements ClientService {
      * @param page Page number (zero-based)
      * @param size Page size
      * @return List of client DTOs for the requested page
+     * @deprecated Use {@link #findAll(Pageable)} instead for paginated responses
      */
     @Override
     @Transactional(readOnly = true)
+    @Deprecated
     public List<ClientDTO> findAll(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         return clientRepository.findAll(pageable).getContent().stream()
@@ -136,7 +138,7 @@ public class ClientServiceImpl implements ClientService {
     /**
      * Find all clients with pagination
      * @param pageable Pagination information
-     * @return Page of client DTOs
+     * @return Page of client DTOs with pagination metadata (total elements, total pages, etc.)
      */
     @Override
     @Transactional(readOnly = true)
