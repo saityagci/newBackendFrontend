@@ -33,5 +33,6 @@ public class VoiceLogDTO {
     private String rawPayload; // for debugging or admin use
     private String conversationData; // structured conversation data
     private Double durationMinutes;
+    private String phoneNumber;
     private LocalDateTime createdAt;
 }

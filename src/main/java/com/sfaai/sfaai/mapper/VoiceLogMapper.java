@@ -44,6 +44,7 @@ public class VoiceLogMapper implements EntityMapper<VoiceLogDTO, VoiceLog> {
                 .conversationData(entity.getConversationData())
                 .createdAt(entity.getCreatedAt())
                 .durationMinutes(entity.getDurationMinutes())
+                .phoneNumber(entity.getPhoneNumber())
                 .build();
     }
 
