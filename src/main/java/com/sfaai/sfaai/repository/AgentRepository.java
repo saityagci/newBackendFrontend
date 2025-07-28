@@ -29,7 +29,7 @@ public interface AgentRepository extends JpaRepository<Agent, Long>, JpaSpecific
      * @param clientId The client ID
      * @return List of agents for the client
      */
-    List<Agent> findByClientId(Long clientId);
+    List<Agent> findByClient_Id(Long clientId);
 
     /**
      * Find agents by client ID with pagination
@@ -37,7 +37,7 @@ public interface AgentRepository extends JpaRepository<Agent, Long>, JpaSpecific
      * @param pageable Pagination information
      * @return Page of agents for the client
      */
-    Page<Agent> findByClientId(Long clientId, Pageable pageable);
+    Page<Agent> findByClient_Id(Long clientId, Pageable pageable);
 
     /**
      * Find agents by type
@@ -59,7 +59,7 @@ public interface AgentRepository extends JpaRepository<Agent, Long>, JpaSpecific
      * @param status The agent status
      * @return List of agents for the client with the specified status
      */
-    List<Agent> findByClientIdAndStatus(Long clientId, AgentStatus status);
+    List<Agent> findByClient_IdAndStatus(Long clientId, AgentStatus status);
 
     /**
      * Find agents by name containing the given text (case insensitive)
@@ -81,7 +81,7 @@ public interface AgentRepository extends JpaRepository<Agent, Long>, JpaSpecific
      * @param clientId The client ID
      * @return Count of agents for the client
      */
-    long countByClientId(Long clientId);
+    long countByClient_Id(Long clientId);
 
     /**
      * Count agents by status

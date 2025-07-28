@@ -23,4 +23,5 @@ public class WorkflowLogCreateDTO {
 
     private String inputData;
     private String outputData;
+    private String status;
 }

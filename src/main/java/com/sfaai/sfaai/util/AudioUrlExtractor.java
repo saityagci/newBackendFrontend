@@ -316,4 +316,25 @@ public class AudioUrlExtractor {
 
         return null;
     }
+
+    /**
+     * Extract audio URL from various data types (alias for extractFromJson for backward compatibility)
+     *
+     * @param data The data to extract URL from (String, Map, or JSON string)
+     * @return The extracted URL or null if not found
+     */
+    public static String extractAudioUrl(String data) {
+        if (data == null || data.isEmpty()) {
+            return null;
+        }
+
+        // Try to parse as JSON first
+        String result = extractFromJson(data);
+        if (result != null) {
+            return result;
+        }
+
+        // If not JSON, try as direct string
+        return extractFromString(data);
+    }
 }

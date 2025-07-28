@@ -2,6 +2,7 @@ package com.sfaai.sfaai.mapper;
 
 import com.sfaai.sfaai.dto.VapiAssistantDTO;
 import com.sfaai.sfaai.entity.VapiAssistant;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -12,6 +13,7 @@ import java.util.stream.Collectors;
  * Mapper for converting between VapiAssistant entity and DTO
  */
 @Component
+@Slf4j
 public class VapiAssistantMapper implements EntityMapper<VapiAssistantDTO, VapiAssistant> {
 
     private final com.sfaai.sfaai.util.FirstMessageFallbackAdapter firstMessageFallbackAdapter;
@@ -31,17 +33,22 @@ public class VapiAssistantMapper implements EntityMapper<VapiAssistantDTO, VapiA
         dto.setName(entity.getName());
         dto.setStatus(entity.getStatus());
 
+        // Map client relationship
+        if (entity.getClient() != null) {
+            dto.setClientId(entity.getClient().getId());
+        }
+
         // Debug firstMessage mapping
         String dbFirstMessage = entity.getFirstMessage();
-        System.out.println("VapiAssistantMapper.toDto: firstMessage from database: '" + dbFirstMessage + "'");
+        log.debug("VapiAssistantMapper.toDto: firstMessage from database: '{}'", dbFirstMessage);
         dto.setFirstMessage(dbFirstMessage);
-        System.out.println("VapiAssistantMapper.toDto: firstMessage set in DTO: '" + dto.getFirstMessage() + "'");
+        log.debug("VapiAssistantMapper.toDto: firstMessage set in DTO: '{}'", dto.getFirstMessage());
 
         // Apply fallback if firstMessage is still null
         if (dto.getFirstMessage() == null) {
-            System.out.println("VapiAssistantMapper.toDto: firstMessage is null, applying fallback");
+            log.debug("VapiAssistantMapper.toDto: firstMessage is null, applying fallback");
             firstMessageFallbackAdapter.applyFallbackMessage(dto);
-            System.out.println("VapiAssistantMapper.toDto: fallback firstMessage: '" + dto.getFirstMessage() + "'");
+            log.debug("VapiAssistantMapper.toDto: fallback firstMessage: '{}'", dto.getFirstMessage());
         }
 
         // Map voice info if available
@@ -75,11 +82,11 @@ public class VapiAssistantMapper implements EntityMapper<VapiAssistantDTO, VapiA
     @Override
     public VapiAssistant toEntity(VapiAssistantDTO dto) {
         if (dto == null) {
-            System.out.println("VapiAssistantMapper: Input DTO is null");
+            log.warn("VapiAssistantMapper: Input DTO is null");
             return null;
         }
 
-        System.out.println("VapiAssistantMapper: Mapping DTO to entity - ID: " + dto.getAssistantId() + ", Name: " + dto.getName());
+        log.debug("VapiAssistantMapper: Mapping DTO to entity - ID: {}, Name: {}", dto.getAssistantId(), dto.getName());
 
         try {
             VapiAssistant entity = new VapiAssistant();
@@ -89,17 +96,17 @@ public class VapiAssistantMapper implements EntityMapper<VapiAssistantDTO, VapiA
 
                 // Debug firstMessage field
                 String firstMessage = dto.getFirstMessage();
-                System.out.println("FirstMessage from DTO: " + firstMessage);
+                log.debug("FirstMessage from DTO: {}", firstMessage);
                 entity.setFirstMessage(firstMessage);
 
         // Map voice info if available
         if (dto.getVoice() != null) {
-            System.out.println("Voice info from DTO: " + dto.getVoice());
+            log.debug("Voice info from DTO: {}", dto.getVoice());
             entity.setVoiceProvider(dto.getVoice().getProvider());
             entity.setVoiceId(dto.getVoice().getVoiceId());
-            System.out.println("Set voice data - Provider: " + entity.getVoiceProvider() + ", ID: " + entity.getVoiceId());
+            log.debug("Set voice data - Provider: {}, ID: {}", entity.getVoiceProvider(), entity.getVoiceId());
         } else {
-            System.out.println("Voice info is null in DTO");
+            log.debug("Voice info is null in DTO");
         }
 
         // Set model info if available
@@ -119,11 +126,10 @@ public class VapiAssistantMapper implements EntityMapper<VapiAssistantDTO, VapiA
         entity.setLastSyncedAt(LocalDateTime.now());
         entity.setSyncStatus("SUCCESS");
 
-        System.out.println("VapiAssistantMapper: Successfully mapped entity - ID: " + entity.getAssistantId() + ", Name: " + entity.getName());
+        log.debug("VapiAssistantMapper: Successfully mapped entity - ID: {}, Name: {}", entity.getAssistantId(), entity.getName());
         return entity;
         } catch (Exception e) {
-            System.out.println("VapiAssistantMapper: Error mapping entity: " + e.getMessage());
-            e.printStackTrace();
+            log.error("VapiAssistantMapper: Error mapping entity: {}", e.getMessage(), e);
             throw e; // Re-throw to allow caller to handle it
         }
     }

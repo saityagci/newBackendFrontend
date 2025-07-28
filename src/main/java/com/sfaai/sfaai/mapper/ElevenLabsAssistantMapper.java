@@ -17,6 +17,15 @@ public class ElevenLabsAssistantMapper {
         ElevenLabsAssistantDTO dto = new ElevenLabsAssistantDTO();
         dto.setAssistantId(entity.getAssistantId());
         dto.setName(entity.getName());
+        
+        // Map client and agent relationships
+        if (entity.getClient() != null) {
+            dto.setClientId(entity.getClient().getId());
+        }
+        if (entity.getAgent() != null) {
+            dto.setAgentId(entity.getAgent().getId());
+        }
+        
         dto.setFirstMessage(entity.getFirstMessage());
         dto.setLanguage(entity.getLanguage());
         dto.setVoiceProvider(entity.getVoiceProvider());

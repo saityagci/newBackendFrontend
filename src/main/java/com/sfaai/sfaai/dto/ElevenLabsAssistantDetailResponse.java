@@ -20,6 +20,15 @@ import java.util.Map;
 public class ElevenLabsAssistantDetailResponse {
     @JsonProperty("agent_id")
     private String assistantId;
+
+    // Alias for assistantId to support both naming conventions
+    public String getId() {
+        return assistantId;
+    }
+
+    public void setId(String id) {
+        this.assistantId = id;
+    }
     private String name;
     private String description;
     @JsonProperty("voice_id")
@@ -31,6 +40,7 @@ public class ElevenLabsAssistantDetailResponse {
 
     // Store all additional properties from the API response
     @JsonAnySetter
+    @Builder.Default
     private Map<String, Object> details = new HashMap<>();
 
     @JsonAnyGetter
@@ -49,7 +59,7 @@ public class ElevenLabsAssistantDetailResponse {
     private TtsConfig tts;
 
     @JsonProperty("tools")
-    private Object tools; // TODO: Define a proper DTO if structure is known, else keep as Object/Map
+    private Object tools; // Keep as Object for flexibility with varying tool structures
 
     // Add more nested fields as needed
 

@@ -21,6 +21,15 @@ public class ElevenLabsAssistant {
     @Column(name = "assistant_id", length = 64)
     private String assistantId;
 
+    // Alias for assistantId to support both naming conventions
+    public String getId() {
+        return assistantId;
+    }
+
+    public void setId(String id) {
+        this.assistantId = id;
+    }
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id")
     private Client client;

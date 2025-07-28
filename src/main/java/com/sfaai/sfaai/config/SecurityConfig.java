@@ -101,6 +101,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/register", "/api/login").permitAll()
+                        .requestMatchers("/api/contact").permitAll()
                         .requestMatchers(apiDocsPath + "/**", swaggerUiPath + "/**").permitAll()
                         .requestMatchers("/api/webhooks/vapi/**").permitAll()
                         .requestMatchers("/audio/**").permitAll()

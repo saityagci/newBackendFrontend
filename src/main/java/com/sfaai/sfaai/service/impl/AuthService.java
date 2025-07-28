@@ -8,6 +8,7 @@ import com.sfaai.sfaai.entity.Client;
 import com.sfaai.sfaai.repository.ClientRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -22,6 +23,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
 
     private final ClientRepository clientRepository;
@@ -34,12 +36,12 @@ public class AuthService {
 
     @PostConstruct
     public void logDatasource() throws SQLException {
-        System.out.println("✅ JDBC URL: " + dataSource.getConnection().getMetaData().getURL());
+        log.info("✅ JDBC URL: {}", dataSource.getConnection().getMetaData().getURL());
     }
 
     public LoginResponse register(RegisterRequest request) {
         // Debug logging
-        System.out.println("DEBUG: RegisterRequest received - fullName: '" + request.getFullName() + "', email: '" + request.getEmail() + "'");
+        log.debug("RegisterRequest received - fullName: '{}', email: '{}'", request.getFullName(), request.getEmail());
         
         // Generate a unique API key for the new client
         String apiKey = generateApiKey();
@@ -64,19 +66,22 @@ public class AuthService {
         }
 
         // Make sure role is stored without ROLE_ prefix, as Spring Security will add it
-        // Default to USER role unless admin role is explicitly requested and authorized
-        String role = "USER";
+        // Use role from request or default to USER
+        String role = (request.getRole() != null && !request.getRole().trim().isEmpty()) 
+                ? request.getRole().trim().toUpperCase() 
+                : "USER";
 
         Client client = Client.builder()
-                .fullName(request.getFullName())
-                .email(request.getEmail().trim().toLowerCase())
+                .fullName(request.getFullName() != null ? request.getFullName().trim() : null)
+                .email(request.getEmail() != null ? request.getEmail().trim().toLowerCase() : null)
                 .password(passwordEncoder.encode(request.getPassword()))
+                .phone(request.getPhone() != null ? request.getPhone().trim() : null)
                 .role(role) // Role without ROLE_ prefix
                 .apiKey(apiKey) // Add the generated API key
                 .build();
 
         // Debug logging
-        System.out.println("DEBUG: Client entity created - fullName: '" + client.getFullName() + "', email: '" + client.getEmail() + "'");
+        log.debug("DEBUG: Client entity created - fullName: '{}', email: '{}'", client.getFullName(), client.getEmail());
 
         Client savedClient = clientRepository.save(client);
 
@@ -137,16 +142,16 @@ public class AuthService {
                 .build();
 
             // Log the user's role for debugging
-            System.out.println("✅ User logged in with role: " + client.getRole());
-            System.out.println("✅ User logged in with email: " + client.getEmail());
+            log.info("✅ User logged in with role: {}", client.getRole());
+            log.info("✅ User logged in with email: {}", client.getEmail());
 
             // Create response with correct redirect URL
             String redirectUrl = client.getRole().equalsIgnoreCase("ADMIN") ? "/AdminDashboard" : "/dashboard";
             LoginResponse response = new LoginResponse(clientDTO, token, redirectUrl);
 
             // Log the complete response
-            System.out.println("✅ Login Response - User Role: " + response.getUser().getRole());
-            System.out.println("✅ Login Response - Redirect URL: " + response.getRedirectUrl());
+            log.info("✅ Login Response - User Role: {}", response.getUser().getRole());
+            log.info("✅ Login Response - Redirect URL: {}", response.getRedirectUrl());
 
             return response;
         } catch (org.springframework.security.authentication.BadCredentialsException e) {

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.*;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
 import java.util.List;
@@ -23,6 +24,7 @@ import java.util.Map;
 @ToString(exclude = "properties") // Exclude properties from toString to avoid large log outputs
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonDeserialize(using = VapiWebhookPayloadDTODeserializer.class)
+@Slf4j
 public class VapiWebhookPayloadDTO {
 
     @Builder.Default
@@ -295,10 +297,10 @@ public class VapiWebhookPayloadDTO {
      */
     public String getAnyRecordingUrl() {
         // Log all properties for debugging
-        System.out.println("DEBUG getAnyRecordingUrl - Properties: " + properties);
+        log.debug("DEBUG getAnyRecordingUrl - Properties: {}", properties);
         if (message != null && message.getArtifact() != null) {
-            System.out.println("DEBUG getAnyRecordingUrl - Message artifact: " + message.getArtifact());
-            System.out.println("DEBUG getAnyRecordingUrl - Message artifact recordingUrl: " +
+            log.debug("DEBUG getAnyRecordingUrl - Message artifact: {}", message.getArtifact());
+            log.debug("DEBUG getAnyRecordingUrl - Message artifact recordingUrl: {}", 
                     message.getArtifact().getRecordingUrl());
         }
 
@@ -306,7 +308,7 @@ public class VapiWebhookPayloadDTO {
         if (properties.containsKey("recordingUrl")) {
             Object url = properties.get("recordingUrl");
             if (url != null && !url.toString().isEmpty()) {
-                System.out.println("DEBUG getAnyRecordingUrl - Found root recordingUrl: " + url);
+                log.debug("DEBUG getAnyRecordingUrl - Found root recordingUrl: {}", url);
                 return url.toString();
             }
         }
@@ -314,7 +316,7 @@ public class VapiWebhookPayloadDTO {
         // Then try the nested path via getAudioUrl()
         String nestedUrl = getAudioUrl();
         if (nestedUrl != null && !nestedUrl.isEmpty()) {
-            System.out.println("DEBUG getAnyRecordingUrl - Found nested audioUrl: " + nestedUrl);
+            log.debug("DEBUG getAnyRecordingUrl - Found nested audioUrl: {}", nestedUrl);
             return nestedUrl;
         }
 
@@ -340,7 +342,7 @@ public class VapiWebhookPayloadDTO {
         for (String path : possiblePaths) {
             String url = getStringValue(path);
             if (url != null && !url.isEmpty()) {
-                System.out.println("DEBUG getAnyRecordingUrl - Found URL at path '" + path + "': " + url);
+                log.debug("DEBUG getAnyRecordingUrl - Found URL at path '{}': {}", path, url);
                 return url;
             }
         }
@@ -351,7 +353,7 @@ public class VapiWebhookPayloadDTO {
                 key.toLowerCase().contains("url")) {
                 Object value = properties.get(key);
                 if (value != null) {
-                    System.out.println("DEBUG getAnyRecordingUrl - Found URL in property '" + key + "': " + value);
+                    log.debug("DEBUG getAnyRecordingUrl - Found URL in property '{}': {}", key, value);
                     return value.toString();
                 }
             }
@@ -365,8 +367,7 @@ public class VapiWebhookPayloadDTO {
                         nestedKey.toLowerCase().contains("url")) {
                         Object value = nestedMap.get(nestedKey);
                         if (value != null) {
-                            System.out.println("DEBUG getAnyRecordingUrl - Found URL in nested property '" +
-                                    key + "." + nestedKey + "': " + value);
+                            log.debug("DEBUG getAnyRecordingUrl - Found URL in nested property '{}.{}': {}", key, nestedKey, value);
                             return value.toString();
                         }
                     }
@@ -374,7 +375,7 @@ public class VapiWebhookPayloadDTO {
             }
         }
 
-        System.out.println("DEBUG getAnyRecordingUrl - No recording URL found");
+        log.debug("DEBUG getAnyRecordingUrl - No recording URL found");
         return null;
     }
 

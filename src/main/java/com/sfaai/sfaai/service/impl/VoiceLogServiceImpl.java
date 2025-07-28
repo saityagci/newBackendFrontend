@@ -63,14 +63,23 @@ public class VoiceLogServiceImpl implements VoiceLogService {
     @Override
     @Transactional(readOnly = true)
     public List<VoiceLogDTO> getVoiceLogsByClientId(Long clientId) {
-        List<VoiceLog> voiceLogs = voiceLogRepository.findByClientId(clientId);
+        if (clientId == null) {
+            throw new NullPointerException("Client ID cannot be null");
+        }
+        // Get voice logs by client ID
+        List<VoiceLog> voiceLogs = voiceLogRepository.findByClient_Id(clientId);
         return voiceLogMapper.toDtoList(voiceLogs);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<VoiceLogDTO> getVoiceLogsByAgentId(Long agentId) {
-        List<VoiceLog> voiceLogs = voiceLogRepository.findByAgentId(agentId);
+        if (agentId == null) {
+            throw new IllegalArgumentException("Agent ID cannot be null");
+        }
+
+        // Get voice logs by agent ID
+        List<VoiceLog> voiceLogs = voiceLogRepository.findByAgent_Id(agentId);
         return voiceLogMapper.toDtoList(voiceLogs);
     }
 
@@ -328,6 +337,17 @@ public class VoiceLogServiceImpl implements VoiceLogService {
     @Override
     @Transactional
     public VoiceLogDTO createVoiceLog(VoiceLogCreateDTO dto) {
+        // Add null validation
+        if (dto == null) {
+            throw new IllegalArgumentException("Request cannot be null");
+        }
+        if (dto.getClientId() == null) {
+            throw new IllegalArgumentException("Client ID cannot be null");
+        }
+        if (dto.getAgentId() == null) {
+            throw new IllegalArgumentException("Agent ID cannot be null");
+        }
+        
         // Handle the case where externalCallId is null or empty
         if (dto.getExternalCallId() == null || dto.getExternalCallId().trim().isEmpty()) {
             return createNewVoiceLog(dto);

@@ -2,6 +2,7 @@ package com.sfaai.sfaai.service;
 
 import com.sfaai.sfaai.dto.ClientCreateDTO;
 import com.sfaai.sfaai.dto.ClientDTO;
+import com.sfaai.sfaai.dto.ClientUpdateDTO;
 import com.sfaai.sfaai.dto.VapiAssistantDTO;
 import com.sfaai.sfaai.dto.ElevenLabsAssistantDTO;
 import org.springframework.data.domain.Page;
@@ -27,6 +28,14 @@ public interface ClientService {
      * @return Updated client DTO
      */
     ClientDTO update(Long id, ClientDTO dto);
+
+    /**
+     * Update an existing client with partial data
+     * @param id Client ID to update
+     * @param dto Updated client data (partial update)
+     * @return Updated client DTO
+     */
+    ClientDTO update(Long id, ClientUpdateDTO dto);
 
     /**
      * Find all clients
@@ -70,6 +79,21 @@ public interface ClientService {
      * @param id Client ID to delete
      */
     void delete(Long id);
+
+    /**
+     * Update a client's password
+     * @param id Client ID to update
+     * @param newPassword New password
+     */
+    void updatePassword(Long id, String newPassword);
+
+    /**
+     * Update a client's password with current password verification
+     * @param id Client ID to update
+     * @param currentPassword Current password for verification
+     * @param newPassword New password
+     */
+    void updatePasswordWithVerification(Long id, String currentPassword, String newPassword);
 
     /**
      * Get client by API key

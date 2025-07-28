@@ -20,7 +20,7 @@ public interface WorkflowLogRepository extends JpaRepository<WorkflowLog, Long> 
      * @param clientId The client ID
      * @return List of workflow logs for the client
      */
-    List<WorkflowLog> findByClientId(Long clientId);
+    List<WorkflowLog> findByClient_Id(Long clientId);
 
     /**
      * Find workflow logs by client ID with pagination
@@ -28,21 +28,21 @@ public interface WorkflowLogRepository extends JpaRepository<WorkflowLog, Long> 
      * @param pageable Pagination information
      * @return Page of workflow logs for the client
      */
-    Page<WorkflowLog> findByClientId(Long clientId, Pageable pageable);
+    Page<WorkflowLog> findByClient_Id(Long clientId, Pageable pageable);
 
     /**
      * Find workflow logs by voice log ID
      * @param voiceLogId The voice log ID
      * @return List of workflow logs for the voice log
      */
-    List<WorkflowLog> findByVoiceLogId(Long voiceLogId);
+    List<WorkflowLog> findByVoiceLog_Id(Long voiceLogId);
 
     /**
      * Find workflow logs by agent ID
      * @param agentId The agent ID
      * @return List of workflow logs for the agent
      */
-    List<WorkflowLog> findByAgentId(Long agentId);
+    List<WorkflowLog> findByAgent_Id(Long agentId);
 
     /**
      * Find workflow logs by agent ID with pagination
@@ -50,7 +50,7 @@ public interface WorkflowLogRepository extends JpaRepository<WorkflowLog, Long> 
      * @param pageable Pagination information
      * @return Page of workflow logs for the agent
      */
-    Page<WorkflowLog> findByAgentId(Long agentId, Pageable pageable);
+    Page<WorkflowLog> findByAgent_Id(Long agentId, Pageable pageable);
 
     /**
      * Find workflow logs by workflow name
@@ -97,26 +97,26 @@ public interface WorkflowLogRepository extends JpaRepository<WorkflowLog, Long> 
      * @param endDate The end date (inclusive)
      * @return List of workflow logs for the client created in the date range
      */
-    List<WorkflowLog> findByClientIdAndCreatedAtBetween(Long clientId, LocalDateTime startDate, LocalDateTime endDate);
+    List<WorkflowLog> findByClient_IdAndCreatedAtBetween(Long clientId, LocalDateTime startDate, LocalDateTime endDate);
 
     /**
      * Count workflow logs by client ID
      * @param clientId The client ID
      * @return Count of workflow logs for the client
      */
-    long countByClientId(Long clientId);
+    long countByClient_Id(Long clientId);
 
     /**
      * Count workflow logs by agent ID
      * @param agentId The agent ID
      * @return Count of workflow logs for the agent
      */
-    long countByAgentId(Long agentId);
+    long countByAgent_Id(Long agentId);
 
     /**
      * Count workflow logs by voice log ID
      * @param voiceLogId The voice log ID
      * @return Count of workflow logs for the voice log
      */
-    long countByVoiceLogId(Long voiceLogId);
+    long countByVoiceLog_Id(Long voiceLogId);
 }

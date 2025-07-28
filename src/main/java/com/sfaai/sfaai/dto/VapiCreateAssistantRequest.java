@@ -34,6 +34,15 @@ public class VapiCreateAssistantRequest {
     @NotBlank(message = "First message is required")
     private String firstMessage;
 
+    // Alias for firstMessage to support both naming conventions
+    public String getName() {
+        return firstMessage;
+    }
+
+    public void setName(String name) {
+        this.firstMessage = name;
+    }
+
     @Data
     @Builder
     @NoArgsConstructor

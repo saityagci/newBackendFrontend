@@ -21,7 +21,23 @@ public class ElevenLabsAssistantDTO {
     @JsonProperty("agent_id")
     private String assistantId;
 
+    // Alias for assistantId to support both naming conventions
+    public String getId() {
+        return assistantId;
+    }
+
+    public void setId(String id) {
+        this.assistantId = id;
+    }
+
     private String name;
+
+    // Add client and agent relationship fields
+    @JsonProperty("client_id")
+    private Long clientId;
+
+    @JsonProperty("assigned_agent_id")
+    private Long agentId;
 
     private String firstMessage;
     private String language;
@@ -49,6 +65,7 @@ public class ElevenLabsAssistantDTO {
 
     // Store all additional properties from the full API response
     @JsonAnySetter
+    @Builder.Default
     private Map<String, Object> details = new java.util.HashMap<>();
 
     @JsonAnyGetter

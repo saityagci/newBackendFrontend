@@ -53,6 +53,19 @@ public class WorkflowLog {
     @JoinColumn(name = "agent_id", nullable = false)
     private Agent agent;
 
+    // Convenience method for builder
+    public Long getAgentId() {
+        return agent != null ? agent.getId() : null;
+    }
+
+    public void setAgentId(Long agentId) {
+        // This is a convenience method for testing, actual agent should be set via setAgent()
+        if (agentId != null && agent == null) {
+            agent = new Agent();
+            agent.setId(agentId);
+        }
+    }
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "voice_log_id")
     private VoiceLog voiceLog;

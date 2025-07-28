@@ -81,6 +81,31 @@ public class VoiceLogController {
     }
 
     /**
+     * Get all voice logs (admin only)
+     * @return List of all voice log DTOs
+     */
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+        summary = "Get all voice logs",
+        description = "Retrieves all voice logs from the database (admin only)"
+    )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully retrieved all voice logs",
+            content = @Content(schema = @Schema(implementation = VoiceLogDTO.class))
+        ),
+        @ApiResponse(responseCode = "403", description = "Access denied")
+    })
+    public ResponseEntity<List<VoiceLogDTO>> getAllVoiceLogs() {
+        log.info("Retrieving all voice logs (admin only)");
+        List<VoiceLogDTO> voiceLogs = voiceLogService.getAllVoiceLogs();
+        log.info("Found {} voice logs", voiceLogs.size());
+        return ResponseEntity.ok(voiceLogs);
+    }
+
+    /**
      * Receive and process a webhook for voice logs
      * Uses an idempotent pattern to ensure duplicate webhooks don't create duplicate entries
      *

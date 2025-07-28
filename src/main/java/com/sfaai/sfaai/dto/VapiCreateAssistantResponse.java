@@ -22,5 +22,23 @@ public class VapiCreateAssistantResponse {
 
     private String status;
 
+    // Alias for assistantId to support both naming conventions
+    public String getId() {
+        return assistantId;
+    }
+
+    public void setId(String id) {
+        this.assistantId = id;
+    }
+
+    // Alias for status to support both naming conventions
+    public String getName() {
+        return status;
+    }
+
+    public void setName(String name) {
+        this.status = name;
+    }
+
     // You can add more fields as needed from the Vapi API response
 }

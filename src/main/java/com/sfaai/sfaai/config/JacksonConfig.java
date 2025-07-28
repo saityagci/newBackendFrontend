@@ -29,8 +29,8 @@ public class JacksonConfig {
         // Register JavaTimeModule for proper LocalDateTime handling
         mapper.registerModule(new JavaTimeModule());
 
-        // Configure for snake_case field names
-        mapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+        // Configure for camelCase field names (default)
+        // mapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
 
         // Additional configuration
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);

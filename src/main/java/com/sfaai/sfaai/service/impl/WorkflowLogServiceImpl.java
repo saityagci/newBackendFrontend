@@ -26,12 +26,13 @@ public class WorkflowLogServiceImpl implements WorkflowLogService {
 
     @Override
     @Transactional(readOnly = true)
-
     public WorkflowLogDTO getWorkflowLogById(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("ID cannot be null");
+        }
         WorkflowLog workflowLog = workflowLogRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Workflow log not found with id: " + id));
         return workflowLogMapper.toDto(workflowLog);
-
     }
 
     @Override
@@ -52,21 +53,30 @@ public class WorkflowLogServiceImpl implements WorkflowLogService {
     @Override
     @Transactional(readOnly = true)
     public List<WorkflowLogDTO> getWorkflowLogsByClientId(Long clientId) {
-        return workflowLogMapper.toDtoList(workflowLogRepository.findByClientId(clientId));
+        if (clientId == null) {
+            throw new IllegalArgumentException("Client ID cannot be null");
+        }
+        return workflowLogMapper.toDtoList(workflowLogRepository.findByClient_Id(clientId));
     }
 
 
     @Override
     @Transactional(readOnly = true)
     public List<WorkflowLogDTO> getWorkflowLogsByAgentId(Long agentId) {
-        return workflowLogMapper.toDtoList(workflowLogRepository.findByAgentId(agentId));
+        if (agentId == null) {
+            throw new IllegalArgumentException("Agent ID cannot be null");
+        }
+        return workflowLogMapper.toDtoList(workflowLogRepository.findByAgent_Id(agentId));
     }
 
 
     @Override
     @Transactional(readOnly = true)
     public List<WorkflowLogDTO> getWorkflowLogsByVoiceLogId(Long voiceLogId) {
-        return workflowLogMapper.toDtoList(workflowLogRepository.findByVoiceLogId(voiceLogId));
+        if (voiceLogId == null) {
+            throw new IllegalArgumentException("Voice Log ID cannot be null");
+        }
+        return workflowLogMapper.toDtoList(workflowLogRepository.findByVoiceLog_Id(voiceLogId));
     }
 
 
@@ -80,6 +90,13 @@ public class WorkflowLogServiceImpl implements WorkflowLogService {
     @Override
     @Transactional
     public WorkflowLogDTO createWorkflowLog(WorkflowLogCreateDTO dto) {
+        if (dto == null) {
+            throw new IllegalArgumentException("Request cannot be null");
+        }
+        if (dto.getClientId() == null) {
+            throw new IllegalArgumentException("Client ID cannot be null");
+        }
+        
         WorkflowLog workflowLog = workflowLogMapper.createEntityFromDto(dto);
         workflowLog.setStatus(WorkflowLog.Status.INITIATED);
         return workflowLogMapper.toDto(workflowLogRepository.save(workflowLog));
@@ -107,6 +124,9 @@ public class WorkflowLogServiceImpl implements WorkflowLogService {
     @Override
     @Transactional
     public void deleteWorkflowLog(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("ID cannot be null");
+        }
         if (!workflowLogRepository.existsById(id)) {
             throw new ResourceNotFoundException("Workflow log not found with id: " + id);
         }

@@ -211,7 +211,7 @@ public class VapiWebhookController {
 
             // Find or create an agent for this client
             Long agentId = null;
-            List<com.sfaai.sfaai.entity.Agent> agents = agentRepository.findByClientIdAndStatus(
+            List<com.sfaai.sfaai.entity.Agent> agents = agentRepository.findByClient_IdAndStatus(
                     client.getId(), com.sfaai.sfaai.entity.Agent.AgentStatus.ACTIVE);
 
             if (!agents.isEmpty()) {

@@ -1,10 +1,6 @@
 package com.sfaai.sfaai.service.impl;
 
-import com.sfaai.sfaai.dto.ClientCreateDTO;
-import com.sfaai.sfaai.dto.ClientDTO;
-import com.sfaai.sfaai.dto.VapiAssistantDTO;
-import com.sfaai.sfaai.dto.ElevenLabsAssistantDTO;
-import com.sfaai.sfaai.dto.VapiListAssistantsResponse;
+import com.sfaai.sfaai.dto.*;
 import com.sfaai.sfaai.entity.Client;
 import com.sfaai.sfaai.entity.VapiAssistant;
 import com.sfaai.sfaai.entity.ElevenLabsAssistant;
@@ -107,6 +103,58 @@ public class ClientServiceImpl implements ClientService {
     }
 
     /**
+     * Update an existing client with partial data
+     * @param id Client ID to update
+     * @param dto Updated client data (partial update)
+     * @return Updated client DTO
+     */
+    @Override
+    @Transactional
+    public ClientDTO update(Long id, ClientUpdateDTO dto) {
+        log.info("Updating client with ID: {}", id);
+        log.debug("Update DTO: {}", dto);
+        
+        Client client = clientRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + id));
+
+        log.info("Found client: ID={}, current fullName='{}', current email='{}'", client.getId(), client.getFullName(), client.getEmail());
+
+        // Update fields
+        if (dto.getFullName() != null) {
+            log.info("Updating fullName from '{}' to '{}'", client.getFullName(), dto.getFullName());
+            client.setFullName(dto.getFullName());
+            log.info("After setFullName: '{}'", client.getFullName());
+        } else {
+            log.info("fullName is null in DTO, skipping update");
+        }
+        if (dto.getEmail() != null) {
+            log.info("Updating email from '{}' to '{}'", client.getEmail(), dto.getEmail());
+            client.setEmail(dto.getEmail());
+            log.info("After setEmail: '{}'", client.getEmail());
+        } else {
+            log.info("email is null in DTO, skipping update");
+        }
+        if (dto.getPhone() != null) {
+            log.debug("Updating phone from '{}' to '{}'", client.getPhone(), dto.getPhone());
+            client.setPhone(dto.getPhone());
+        }
+        if (dto.getRole() != null) {
+            log.debug("Updating role from '{}' to '{}'", client.getRole(), dto.getRole());
+            client.setRole(dto.getRole());
+        }
+
+        // Save updated client
+        log.info("Saving client to database...");
+        Client updated = clientRepository.save(client);
+        log.info("Client saved. Updated fullName: '{}', email: '{}'", updated.getFullName(), updated.getEmail());
+        
+        ClientDTO result = clientMapper.toDto(updated);
+        log.info("Mapped to DTO. Result fullName: '{}', email: '{}'", result.getFullName(), result.getEmail());
+        
+        return result;
+    }
+
+    /**
      * Find all clients
      * @return List of all client DTOs
      */
@@ -196,6 +244,48 @@ public class ClientServiceImpl implements ClientService {
             throw new ResourceNotFoundException("Client not found with id: " + id);
         }
         clientRepository.deleteById(id);
+    }
+
+    /**
+     * Update a client's password
+     * @param id Client ID to update
+     * @param newPassword New password
+     */
+    @Override
+    public void updatePassword(Long id, String newPassword) {
+        Client client = clientRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + id));
+        
+        client.setPassword(passwordEncoder.encode(newPassword));
+        clientRepository.save(client);
+    }
+
+    /**
+     * Update a client's password with current password verification
+     * @param id Client ID to update
+     * @param currentPassword Current password for verification
+     * @param newPassword New password
+     */
+    @Override
+    public void updatePasswordWithVerification(Long id, String currentPassword, String newPassword) {
+        Client client = clientRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + id));
+        
+        // Verify current password
+        if (!passwordEncoder.matches(currentPassword, client.getPassword())) {
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+        
+        // Verify new password and confirm password match
+        if (currentPassword.equals(newPassword)) {
+            throw new IllegalArgumentException("New password must be different from current password");
+        }
+        
+        // Update password
+        client.setPassword(passwordEncoder.encode(newPassword));
+        clientRepository.save(client);
+        
+        log.info("Password updated successfully for client ID: {}", id);
     }
 
     /**

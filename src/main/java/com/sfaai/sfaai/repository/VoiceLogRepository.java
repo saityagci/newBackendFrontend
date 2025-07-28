@@ -19,8 +19,7 @@ public interface VoiceLogRepository extends JpaRepository<VoiceLog, Long> {
      * @param agentId The agent ID
      * @return List of voice logs for the agent
      */
-    List<VoiceLog> findByAgentId(Long agentId);
-
+    List<VoiceLog> findByAgent_Id(Long agentId);
 
     /**
      * Find voice logs by agent ID with pagination
@@ -28,14 +27,14 @@ public interface VoiceLogRepository extends JpaRepository<VoiceLog, Long> {
      * @param pageable Pagination information
      * @return Page of voice logs for the agent
      */
-    Page<VoiceLog> findByAgentId(Long agentId, Pageable pageable);
+    Page<VoiceLog> findByAgent_Id(Long agentId, Pageable pageable);
 
     /**
      * Find voice logs by client ID
      * @param clientId The client ID
      * @return List of voice logs for the client
      */
-    List<VoiceLog> findByClientId(Long clientId);
+    List<VoiceLog> findByClient_Id(Long clientId);
 
     /**
      * Find voice logs by client ID with pagination
@@ -43,7 +42,7 @@ public interface VoiceLogRepository extends JpaRepository<VoiceLog, Long> {
      * @param pageable Pagination information
      * @return Page of voice logs for the client
      */
-    Page<VoiceLog> findByClientId(Long clientId, Pageable pageable);
+    Page<VoiceLog> findByClient_Id(Long clientId, Pageable pageable);
 
     /**
      * Find voice logs by agent ID with eager loading of relationships
@@ -98,20 +97,20 @@ public interface VoiceLogRepository extends JpaRepository<VoiceLog, Long> {
      * @param endDate The end date (inclusive)
      * @return List of voice logs for the client created in the date range
      */
-    List<VoiceLog> findByClientIdAndCreatedAtBetween(Long clientId, LocalDateTime startDate, LocalDateTime endDate);
+    List<VoiceLog> findByClient_IdAndCreatedAtBetween(Long clientId, LocalDateTime startDate, LocalDateTime endDate);
 
     /**
      * Count voice logs by client ID
      * @param clientId The client ID
      * @return Count of voice logs for the client
      */
-    long countByClientId(Long clientId);
+    long countByClient_Id(Long clientId);
 
     /**
      * Count voice logs by agent ID
      * @param agentId The agent ID
      * @return Count of voice logs for the agent
      */
-    long countByAgentId(Long agentId);
+    long countByAgent_Id(Long agentId);
 
 }

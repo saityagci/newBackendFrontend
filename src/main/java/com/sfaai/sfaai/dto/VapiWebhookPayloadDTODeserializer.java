@@ -3,11 +3,13 @@ package com.sfaai.sfaai.dto;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.*;
+import lombok.extern.slf4j.Slf4j;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+@Slf4j
 public class VapiWebhookPayloadDTODeserializer extends JsonDeserializer<VapiWebhookPayloadDTO> {
 
     @Override
@@ -25,14 +27,14 @@ public class VapiWebhookPayloadDTODeserializer extends JsonDeserializer<VapiWebh
             JsonNode durationNode = root.get("durationMinutes");
             if (durationNode.isNumber()) {
                 dto.setDurationMinutes(durationNode.asDouble());
-                System.out.println("DEBUG: Found root-level durationMinutes: " + durationNode.asDouble());
+                log.debug("DEBUG: Found root-level durationMinutes: {}", durationNode.asDouble());
             } else if (durationNode.isTextual()) {
                 try {
                     double value = Double.parseDouble(durationNode.asText());
                     dto.setDurationMinutes(value);
-                    System.out.println("DEBUG: Found root-level durationMinutes (string): " + value);
+                    log.debug("DEBUG: Found root-level durationMinutes (string): {}", value);
                 } catch (NumberFormatException e) {
-                    System.out.println("DEBUG: Could not parse durationMinutes: " + durationNode.asText());
+                    log.debug("DEBUG: Could not parse durationMinutes: {}", durationNode.asText());
                 }
             }
         }
@@ -41,20 +43,20 @@ public class VapiWebhookPayloadDTODeserializer extends JsonDeserializer<VapiWebh
             JsonNode durationNode = root.get("durationSeconds");
             if (durationNode.isNumber()) {
                 dto.setDurationSeconds(durationNode.asDouble());
-                System.out.println("DEBUG: Found root-level durationSeconds: " + durationNode.asDouble());
+                log.debug("DEBUG: Found root-level durationSeconds: {}", durationNode.asDouble());
             } else if (durationNode.isTextual()) {
                 try {
                     double value = Double.parseDouble(durationNode.asText());
                     dto.setDurationSeconds(value);
-                    System.out.println("DEBUG: Found root-level durationSeconds (string): " + value);
+                    log.debug("DEBUG: Found root-level durationSeconds (string): {}", value);
                 } catch (NumberFormatException e) {
-                    System.out.println("DEBUG: Could not parse durationSeconds: " + durationNode.asText());
+                    log.debug("DEBUG: Could not parse durationSeconds: {}", durationNode.asText());
                 }
             }
         }
 
         // Log the root node for debugging
-        System.out.println("DEBUG: Root node: " + root.toString());
+        log.debug("DEBUG: Root node: {}", root.toString());
 
         // 1. Handle "message" field if present
         JsonNode messageNode = root.get("message");
@@ -62,12 +64,12 @@ public class VapiWebhookPayloadDTODeserializer extends JsonDeserializer<VapiWebh
             try {
                 VapiWebhookPayloadDTO.MessageDTO message = mapper.treeToValue(messageNode, VapiWebhookPayloadDTO.MessageDTO.class);
                 dto.setMessage(message);
-                System.out.println("DEBUG: Parsed message node: " + message);
+                log.debug("DEBUG: Parsed message node: {}", message);
 
                 // Check if there's a nested recordingUrl in artifact
                 if (messageNode.has("artifact") && messageNode.get("artifact").has("recordingUrl")) {
                     String recordingUrl = messageNode.get("artifact").get("recordingUrl").asText();
-                    System.out.println("DEBUG: Found nested recordingUrl: " + recordingUrl);
+                    log.debug("DEBUG: Found nested recordingUrl: {}", recordingUrl);
                 }
 
                 // Check for durationMinutes in message object
@@ -75,14 +77,14 @@ public class VapiWebhookPayloadDTODeserializer extends JsonDeserializer<VapiWebh
                     JsonNode durationNode = messageNode.get("durationMinutes");
                     if (durationNode.isNumber()) {
                         message.setDurationMinutes(durationNode.asDouble());
-                        System.out.println("DEBUG: Found message-level durationMinutes: " + durationNode.asDouble());
+                        log.debug("DEBUG: Found message-level durationMinutes: {}", durationNode.asDouble());
                     } else if (durationNode.isTextual()) {
                         try {
                             double value = Double.parseDouble(durationNode.asText());
                             message.setDurationMinutes(value);
-                            System.out.println("DEBUG: Found message-level durationMinutes (string): " + value);
+                            log.debug("DEBUG: Found message-level durationMinutes (string): {}", value);
                         } catch (NumberFormatException e) {
-                            System.out.println("DEBUG: Could not parse message durationMinutes: " + durationNode.asText());
+                            log.debug("DEBUG: Could not parse message durationMinutes: {}", durationNode.asText());
                         }
                     }
                 }
@@ -97,7 +99,7 @@ public class VapiWebhookPayloadDTODeserializer extends JsonDeserializer<VapiWebh
                                 message.setArtifact(new VapiWebhookPayloadDTO.MessageDTO.MessageArtifactDTO());
                             }
                             message.getArtifact().setDurationMinutes(durationNode.asDouble());
-                            System.out.println("DEBUG: Found artifact-level durationMinutes: " + durationNode.asDouble());
+                            log.debug("DEBUG: Found artifact-level durationMinutes: {}", durationNode.asDouble());
                         } else if (durationNode.isTextual()) {
                             try {
                                 double value = Double.parseDouble(durationNode.asText());
@@ -105,16 +107,16 @@ public class VapiWebhookPayloadDTODeserializer extends JsonDeserializer<VapiWebh
                                     message.setArtifact(new VapiWebhookPayloadDTO.MessageDTO.MessageArtifactDTO());
                                 }
                                 message.getArtifact().setDurationMinutes(value);
-                                System.out.println("DEBUG: Found artifact-level durationMinutes (string): " + value);
+                                log.debug("DEBUG: Found artifact-level durationMinutes (string): {}", value);
                             } catch (NumberFormatException e) {
-                                System.out.println("DEBUG: Could not parse artifact durationMinutes: " + durationNode.asText());
+                                log.debug("DEBUG: Could not parse artifact durationMinutes: {}", durationNode.asText());
                             }
                         }
                     }
                 }
 
             } catch (Exception e) {
-                System.out.println("DEBUG: Error parsing message node: " + e.getMessage());
+                log.debug("DEBUG: Error parsing message node: {}", e.getMessage());
             }
 
         }
@@ -128,7 +130,7 @@ public class VapiWebhookPayloadDTODeserializer extends JsonDeserializer<VapiWebh
 
             // Log root-level recordingUrl if found
             if ("recordingUrl".equals(key)) {
-                System.out.println("DEBUG: Found root-level recordingUrl: " + value.asText());
+                log.debug("DEBUG: Found root-level recordingUrl: {}", value.asText());
             }
 
             if (!"message".equals(key)) {
@@ -137,7 +139,7 @@ public class VapiWebhookPayloadDTODeserializer extends JsonDeserializer<VapiWebh
                     Object convertedValue = mapper.treeToValue(value, Object.class);
                     properties.put(key, convertedValue);
                 } catch (Exception e) {
-                    System.out.println("DEBUG: Error converting field '" + key + "': " + e.getMessage());
+                    log.debug("DEBUG: Error converting field '{}': {}", key, e.getMessage());
                     // Fallback to simple conversion for this field
                     if (value.isTextual()) {
                         properties.put(key, value.asText());

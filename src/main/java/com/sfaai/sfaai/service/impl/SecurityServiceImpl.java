@@ -10,6 +10,7 @@ import com.sfaai.sfaai.repository.VoiceLogRepository;
 import com.sfaai.sfaai.repository.WorkflowLogRepository;
 import com.sfaai.sfaai.service.SecurityService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SecurityServiceImpl implements SecurityService {
 
     private final ClientRepository clientRepository;
@@ -31,9 +33,9 @@ public class SecurityServiceImpl implements SecurityService {
         if (auth == null) return false;
 
         // Log authorities for debugging
-        System.out.println("Checking access for user: " + auth.getName());
+        log.debug("Checking access for user: {}", auth.getName());
         for (Object authority : auth.getAuthorities()) {
-            System.out.println("Authority: " + ((org.springframework.security.core.GrantedAuthority)authority).getAuthority());
+            log.debug("Authority: {}", ((org.springframework.security.core.GrantedAuthority)authority).getAuthority());
         }
 
         // Admin has access to everything
@@ -45,7 +47,7 @@ public class SecurityServiceImpl implements SecurityService {
             }
         }
         if (isAdmin) {
-            System.out.println("Admin access granted");
+            log.debug("Admin access granted");
             return true;
         }
 
@@ -54,11 +56,11 @@ public class SecurityServiceImpl implements SecurityService {
         if (client.isPresent()) {
             // Check if the authenticated user's email matches the client's email
             boolean hasAccess = auth.getName().equals(client.get().getEmail());
-            System.out.println("User access check: " + hasAccess + " for " + auth.getName() + " vs " + client.get().getEmail());
+            log.debug("User access check: {} for {} vs {}", hasAccess, auth.getName(), client.get().getEmail());
             return hasAccess;
         }
 
-        System.out.println("Access denied: Client not found or user not authorized");
+        log.debug("Access denied: Client not found or user not authorized");
         return false;
     }
 

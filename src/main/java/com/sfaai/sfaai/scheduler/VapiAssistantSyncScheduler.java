@@ -66,7 +66,7 @@ public class VapiAssistantSyncScheduler {
     }
 
     /**
-     * Scheduled sync every 10 minutes (or as configured in properties)
+     * Scheduled sync every 48 hours (or as configured in properties)
      * Uses fixedDelayString to ensure the previous execution completes before the next one starts
      */
     @Scheduled(fixedDelayString = "${vapi.sync.interval:600000}", initialDelay = 600000)

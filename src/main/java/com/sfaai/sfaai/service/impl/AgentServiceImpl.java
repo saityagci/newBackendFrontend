@@ -104,32 +104,25 @@ public class AgentServiceImpl implements AgentService {
     @Override
     @Transactional(readOnly = true)
     public List<AgentDTO> getAgentsByClientId(Long clientId) {
-        log.debug("Fetching agents for client ID: {}", clientId);
-
-        // Verify client exists first to provide better error messaging
-        if (!clientRepository.existsById(clientId)) {
-            log.error("Client not found with ID: {}", clientId);
-            throw new ResourceNotFoundException("Client not found with id: " + clientId);
+        if (clientId == null) {
+            throw new IllegalArgumentException("Client ID cannot be null");
         }
 
-        List<Agent> agents = agentRepository.findByClientId(clientId);
-        // Return empty list if no agents found (not null)
-        if (agents == null) {
-            log.debug("No agents found for client ID: {}, returning empty list", clientId);
-            return new ArrayList<>();
-        }
-
-        log.debug("Found {} agents for client ID: {}", agents.size(), clientId);
-
-        return agents.stream()
-                .map(agentMapper::toDto)
-                .collect(Collectors.toList());
+        List<Agent> agents = agentRepository.findByClient_Id(clientId);
+        return agentMapper.toDtoList(agents);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<AgentDTO> getAgentsByClientId(Long clientId, Pageable pageable) {
-        Page<Agent> agents = agentRepository.findByClientId(clientId, pageable);
+        if (clientId == null) {
+            throw new IllegalArgumentException("Client ID cannot be null");
+        }
+        if (pageable == null) {
+            throw new IllegalArgumentException("Pageable cannot be null");
+        }
+
+        Page<Agent> agents = agentRepository.findByClient_Id(clientId, pageable);
         return agents.map(agentMapper::toDto);
     }
 
@@ -154,7 +147,10 @@ public class AgentServiceImpl implements AgentService {
     @Override
     @Transactional(readOnly = true)
     public long countAgentsByClientId(Long clientId) {
-        return agentRepository.countByClientId(clientId);
+        if (clientId == null) {
+            throw new IllegalArgumentException("Client ID cannot be null");
+        }
+        return agentRepository.countByClient_Id(clientId);
     }
 
     @Override
@@ -171,6 +167,9 @@ public class AgentServiceImpl implements AgentService {
     @Override
     @Transactional
     public AgentDTO createAgent(AgentCreateDTO dto) {
+        if (dto == null) {
+            throw new NullPointerException("Request cannot be null");
+        }
         // Use the mapper to convert DTO to entity
         Agent agent = agentMapper.createEntityFromDto(dto);
         Agent savedAgent = agentRepository.save(agent);

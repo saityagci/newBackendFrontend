@@ -1,5 +1,6 @@
 package com.sfaai.sfaai.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.TaskScheduler;
@@ -9,6 +10,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
  * Configuration for task scheduling
  */
 @Configuration
+@Slf4j
 public class SchedulingConfig {
 
     /**
@@ -22,12 +24,11 @@ public class SchedulingConfig {
         scheduler.setThreadNamePrefix("vapi-scheduled-task-");
         scheduler.setErrorHandler(throwable -> {
             // Handle scheduling errors without letting them crash the scheduler
-            System.err.println("Error in scheduled task: " + throwable.getMessage());
-            throwable.printStackTrace();
+            log.error("Error in scheduled task: {}", throwable.getMessage(), throwable);
         });
         scheduler.setRejectedExecutionHandler((runnable, executor) -> {
             // Log when tasks are rejected due to queue capacity
-            System.err.println("Task rejected: Queue capacity reached or shutdown in progress");
+            log.warn("Task rejected: Queue capacity reached or shutdown in progress");
         });
         scheduler.setWaitForTasksToCompleteOnShutdown(true);
         scheduler.setAwaitTerminationSeconds(60);

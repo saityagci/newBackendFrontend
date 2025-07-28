@@ -106,6 +106,27 @@ public class AudioStorageServiceImpl implements AudioStorageService {
         return "";
     }
 
+    public String storeAudioFile(org.springframework.web.multipart.MultipartFile file, String fileName) throws IOException {
+        if (file == null || fileName == null) {
+            throw new IllegalArgumentException("File and fileName cannot be null");
+        }
+
+        // Create storage directory if it doesn't exist
+        Path storageDir = Paths.get(audioStorageDir);
+        if (!Files.exists(storageDir)) {
+            Files.createDirectories(storageDir);
+            log.info("Created audio storage directory: {}", storageDir);
+        }
+
+        Path destinationPath = storageDir.resolve(fileName);
+        
+        // Save the file
+        file.transferTo(destinationPath.toFile());
+        
+        log.info("Successfully stored audio file to {}", destinationPath);
+        return destinationPath.toString();
+    }
+
     @Override
     public String getPublicUrl(String storedPath) {
         if (storedPath == null || storedPath.isEmpty()) {

@@ -27,5 +27,6 @@ public class WorkflowLogDTO {
 
     private String inputData;
     private String outputData;
+    private String status;
     private LocalDateTime createdAt;
 }

@@ -33,6 +33,16 @@ public class VoiceLogDTO {
     private String rawPayload; // for debugging or admin use
     private String conversationData; // structured conversation data
     private Double durationMinutes;
+    private String status;
     private String phoneNumber;
     private LocalDateTime createdAt;
+
+    // Alias for durationMinutes to support both naming conventions
+    public Double getDuration() {
+        return durationMinutes;
+    }
+
+    public void setDuration(Double duration) {
+        this.durationMinutes = duration;
+    }
 }
