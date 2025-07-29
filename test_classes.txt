@@ -1,0 +1,14 @@
+com/sfaai/sfaai/controller/AdminVapiControllerTest
+com/sfaai/sfaai/controller/AgentControllerTest
+com/sfaai/sfaai/controller/ClientControllerTest
+com/sfaai/sfaai/dto/VapiWebhookPayloadDTODeserializerTest
+com/sfaai/sfaai/integration/AgentIntegrationTest
+com/sfaai/sfaai/integration/VapiAssistantSyncIntegrationTest
+com/sfaai/sfaai/scheduler/VapiAssistantSyncSchedulerTest
+com/sfaai/sfaai/security/SecurityConfigTest
+com/sfaai/sfaai/service/AgentServiceTest
+com/sfaai/sfaai/service/AuthServiceTest
+com/sfaai/sfaai/service/ElevenLabsVoiceLogServiceTest
+com/sfaai/sfaai/service/JwtServiceTest
+com/sfaai/sfaai/service/VapiAssistantSyncServiceTest
+com/sfaai/sfaai/SfaAiApplicationTests

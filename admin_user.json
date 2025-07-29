@@ -1,0 +1,9 @@
+{
+  "role": "ADMIN",
+  "fullName": "Admin User",
+  "email": "admin@example.com",
+  "password": "adminPassword123",
+  "confirmPassword": "adminPassword123",
+  "agree": true,
+  "passwordMatching": true
+} 
